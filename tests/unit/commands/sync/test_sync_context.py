@@ -1,6 +1,7 @@
 from pathlib import Path
 from unittest import TestCase, mock
 from unittest.mock import mock_open, call, patch, Mock, MagicMock
+from datetime import datetime, timezone
 
 import tomlkit
 from parameterized import parameterized, parameterized_class
@@ -22,7 +23,7 @@ from samcli.commands.sync.sync_context import (
 from samcli.lib.build.build_graph import DEFAULT_DEPENDENCIES_DIR
 
 MOCK_RESOURCE_SYNC_TIME = datetime(2023, 2, 8, 12, 12, 12)
-MOCK_INFRA_SYNC_TIME = datetime.utcnow()
+MOCK_INFRA_SYNC_TIME = datetime.now(timezone.utc)
 
 
 class TestSyncState(TestCase):

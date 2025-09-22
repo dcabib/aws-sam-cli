@@ -65,7 +65,7 @@ class TestParseDate(TestCase):
         self.assertEqual(expected, parse_date(date_str))
 
     def test_must_parse_relative_time_in_utc(self):
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.timezone.utc)
         date_str = "1hour ago"
 
         # Strip out microseconds & seconds since we only care about hours onwards

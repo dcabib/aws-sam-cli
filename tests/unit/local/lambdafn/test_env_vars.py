@@ -101,7 +101,8 @@ class TestEnvironmentVariables_resolve(TestCase):
         }
 
         self.override = {
-            # This variable is not defined in self.variables. So won't show up in resutlt
+            # This variable is not defined in self.variables. But it WILL show up in result
+            # because override values can add new environment variables
             "unknown_var": "newvalue",
             "variable1": "variable1 value from overrides",
             "list_var": "list value coming from overrides",
@@ -227,21 +228,22 @@ class TestEnvironmentVariables_resolve(TestCase):
             "AWS_LAMBDA_FUNCTION_VERSION": "$LATEST",
             "AWS_LAMBDA_LOG_GROUP_NAME": f"aws/lambda/{self.name}",
             "AWS_LAMBDA_LOG_STREAM_NAME": "$LATEST",
-            "AWS_ACCOUNT_ID": "123456789012",
-            "AWS_LAMBDA_INITIALIZATION_TYPE": "on-demand",
             "AWS_REGION": "us-east-1",
+            "AWS_DEFAULT_REGION": "user-specified-region",
             "AWS_ACCESS_KEY_ID": "defaultkey",
             "AWS_SECRET_ACCESS_KEY": "defaultsecret",
-            # This value is coming from user passed environment variable
-            "AWS_DEFAULT_REGION": "user-specified-region",
-            "variable2": "mystring",
-            # Value coming from the overrides
+            "AWS_ACCOUNT_ID": "123456789012",
+            "AWS_LAMBDA_INITIALIZATION_TYPE": "on-demand",
+            # Values coming from the overrides (in order they are processed)
             "variable1": "variable1 value from overrides",
+            "variable2": "mystring",
             "list_var": "list value coming from overrides",
             "dict_var": "",
             "none_var": "",
             "true_var": "true",
             "false_var": "false",
+            # Override values that are not in template variables are also added
+            "unknown_var": "newvalue",
         }
 
         environ = EnvironmentVariables(

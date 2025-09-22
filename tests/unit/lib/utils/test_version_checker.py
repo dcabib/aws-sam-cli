@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest import TestCase
 from unittest.mock import patch, call, ANY
 
@@ -124,9 +124,9 @@ class TestVersionChecker(TestCase):
         self.assertTrue(is_version_check_overdue(None))
 
     def test_last_check_time_week_older_should_return_true(self):
-        eight_days_ago = datetime.utcnow() - timedelta(days=8)
+        eight_days_ago = datetime.now(timezone.utc) - timedelta(days=8)
         self.assertTrue(is_version_check_overdue(eight_days_ago))
 
     def test_last_check_time_week_earlier_should_return_false(self):
-        six_days_ago = datetime.utcnow() - timedelta(days=6)
+        six_days_ago = datetime.now(timezone.utc) - timedelta(days=6)
         self.assertFalse(is_version_check_overdue(six_days_ago.timestamp()))
