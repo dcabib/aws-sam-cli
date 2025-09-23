@@ -110,7 +110,7 @@ class TestVersionChecker(TestCase):
     @patch("samcli.lib.utils.version_checker.GlobalConfig")
     @patch("samcli.lib.utils.version_checker.datetime")
     def test_update_last_check_time(self, mock_datetime, mock_gc):
-        mock_datetime.utcnow.return_value.timestamp.return_value = 12345
+        mock_datetime.now.return_value.timestamp.return_value = 12345
         update_last_check_time()
         self.assertEqual(mock_gc.return_value.last_version_check, 12345)
 

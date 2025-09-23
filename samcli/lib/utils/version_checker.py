@@ -102,7 +102,7 @@ def update_last_check_time() -> None:
     """
     try:
         gc = GlobalConfig()
-        gc.last_version_check = datetime.utcnow().timestamp()
+        gc.last_version_check = datetime.now(timezone.utc).timestamp()
     except Exception as e:
         LOG.debug("Updating last version check time was failed", exc_info=e)
 
