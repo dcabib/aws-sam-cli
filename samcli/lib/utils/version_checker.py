@@ -3,7 +3,7 @@ Contains information about newer version checker for SAM CLI
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 
 import click
@@ -124,5 +124,5 @@ def is_version_check_overdue(last_version_check) -> bool:
     if last_version_check is None or type(last_version_check) not in [int, float]:
         return True
 
-    epoch_week_ago = datetime.utcnow() - timedelta(days=DELTA_DAYS)
-    return datetime.utcfromtimestamp(last_version_check) < epoch_week_ago
+    epoch_week_ago = datetime.now(timezone.utc) - timedelta(days=DELTA_DAYS)
+    return datetime.fromtimestamp(last_version_check, timezone.utc) < epoch_week_ago

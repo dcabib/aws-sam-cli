@@ -69,7 +69,7 @@ class TestParseDate(TestCase):
         date_str = "1hour ago"
 
         # Strip out microseconds & seconds since we only care about hours onwards
-        expected = (now - datetime.timedelta(hours=1)).replace(microsecond=0, second=0)
+        expected = (now - datetime.timedelta(hours=1)).replace(microsecond=0, second=0, tzinfo=None)
         result = parse_date(date_str).replace(microsecond=0, second=0)
 
         self.assertEqual(expected, result)

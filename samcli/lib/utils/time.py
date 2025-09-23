@@ -3,6 +3,7 @@ Date & Time related utilities
 """
 
 import datetime
+from datetime import timezone
 
 import dateparser
 
@@ -61,7 +62,8 @@ def to_timestamp(some_time):
     """
 
     # `total_seconds()` returns elaped microseconds as a float. Get just milliseconds and discard the rest.
-    return int((some_time - datetime.datetime(1970, 1, 1)).total_seconds() * 1000.0)
+    epoch = datetime.datetime(1970, 1, 1, tzinfo=timezone.utc if some_time.tzinfo else None)
+    return int((some_time - epoch).total_seconds() * 1000.0)
 
 
 def utc_to_timestamp(utc):
