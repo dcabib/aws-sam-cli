@@ -23,7 +23,7 @@ def timestamp_to_iso(timestamp):
         ISO formatted time string
     """
 
-    return to_datetime(timestamp).isoformat()
+    return to_datetime(timestamp).replace(tzinfo=None).isoformat()
 
 
 def to_datetime(timestamp):
@@ -42,7 +42,7 @@ def to_datetime(timestamp):
     """
 
     timestamp_secs = int(timestamp) / 1000.0
-    return datetime.datetime.utcfromtimestamp(timestamp_secs)
+    return datetime.datetime.fromtimestamp(timestamp_secs, datetime.timezone.utc)
 
 
 def to_timestamp(some_time):
@@ -120,7 +120,7 @@ def parse_date(date_string):
         # will use current local time as the base for subtraction, but falsely assume it is a UTC time. Therefore
         # the time that dateparser returns will be a `datetime` object that did not have any timezone information.
         # So be explicit to set the time to UTC.
-        "RELATIVE_BASE": datetime.datetime.utcnow()
+        "RELATIVE_BASE": datetime.datetime.now(datetime.timezone.utc)
     }
 
     return dateparser.parse(date_string, settings=parser_settings)

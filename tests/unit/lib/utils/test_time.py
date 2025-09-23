@@ -22,14 +22,14 @@ class TestTimestampToIso(TestCase):
 
 class TestToTimestamp(TestCase):
     def test_must_convert_to_timestamp(self):
-        date = datetime.datetime.utcfromtimestamp(1530882594.123)
+        date = datetime.datetime.fromtimestamp(1530882594.123, datetime.timezone.utc)
         expected = 1530882594123
 
         self.assertEqual(expected, to_timestamp(date))
 
     def test_convert_utc_to_timestamp(self):
         timestamp = time.time()
-        utc = datetime.datetime.utcfromtimestamp(timestamp)
+        utc = datetime.datetime.fromtimestamp(timestamp, datetime.timezone.utc)
         # compare in milliseconds
         self.assertEqual(int(timestamp * 1000), utc_to_timestamp(utc))
 
