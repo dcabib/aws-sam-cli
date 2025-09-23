@@ -64,7 +64,7 @@ class TestSyncState(TestCase):
     )
     @mock.patch("samcli.commands.sync.sync_context.datetime")
     def test_sync_state_update_sync_state_methods(self, dependency_layer, resource_id, resource_hash, datetime_mock):
-        datetime_mock.utcnow.return_value = MOCK_INFRA_SYNC_TIME
+        datetime_mock.now.return_value = MOCK_INFRA_SYNC_TIME
         sync_state = SyncState(dependency_layer=dependency_layer, latest_infra_sync_time=None, resource_sync_states={})
         self.assertEqual(sync_state.dependency_layer, dependency_layer)
         self.assertEqual(sync_state.latest_infra_sync_time, None)
@@ -260,7 +260,7 @@ class TestSyncContext(TestCase):
     def test_sync_context_update_infra_sync_state_methods(
         self, previous_dependency_layer_value, resource_id, resource_hash, datetime_mock
     ):
-        datetime_mock.utcnow.return_value = MOCK_INFRA_SYNC_TIME
+        datetime_mock.now.return_value = MOCK_INFRA_SYNC_TIME
         template = """
         [sync_state]
         dependency_layer = {dependency_layer}
