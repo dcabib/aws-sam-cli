@@ -1,0 +1,37 @@
+[96m
+================================================================================[0m
+[1m[96m  INTEGRATION TESTS - start-function-urls[0m
+[96m================================================================================
+[0m
+[94m
+→ Running CDK integration tests...[0m
+[94mRunning: CDK Integration Tests[0m
+[93mCommand: python -m pytest tests/integration/local/start_function_urls/test_start_function_urls_cdk.py -v --tb=short --no-header -x[0m
+[94m
+→ Running CloudFormation integration tests...[0m
+[94mRunning: CloudFormation Integration Tests[0m
+[93mCommand: python -m pytest tests/integration/local/start_function_urls/test_start_function_urls_cloudformation.py -v --tb=short --no-header -x[0m
+[94m
+→ Running SAM template integration tests...[0m
+[94mRunning: SAM Integration Tests[0m
+[93mCommand: python -m pytest tests/integration/local/start_function_urls/test_start_function_urls_sam_templates.py -v --tb=short --no-header -x[0m
+[91m✗ Integration tests failed (0 failures)[0m
+[96m
+================================================================================[0m
+[1m[96m  TEST REPORT SUMMARY[0m
+[96m================================================================================
+[0m
+[1m[96mTest Suite Results:[0m
+
+[91m  integration_tests              ✗ FAIL[0m
+
+[94mReport saved to: test_logs/test_report_20250926_113337.json[0m
+[94mLog directory: test_logs[0m
+
+[1m[91m✗ SOME TESTS FAILED - Review logs for details[0m
+[91m
+================================================================================[0m
+[1m[91mDETAILED FAILURE ANALYSIS[0m
+[91m================================================================================[0m
+[1m[91m
+1. INTEGRATION_TESTS[0m

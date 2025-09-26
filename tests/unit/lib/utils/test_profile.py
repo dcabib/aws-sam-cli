@@ -17,10 +17,10 @@ class TestProfile(unittest.TestCase):
         mock_session_instance = Mock()
         mock_session_instance.available_profiles = expected_profiles
         mock_session.return_value = mock_session_instance
-        
+
         # Act
         result = list_available_profiles()
-        
+
         # Assert
         self.assertEqual(result, expected_profiles)
         mock_session.assert_called_once()

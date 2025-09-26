@@ -111,10 +111,9 @@ class EnvironmentVariables:
             # Runtime expects a Map<String, String> for environment variables
             result[name] = self._stringify_value(override_value)
 
-        # Also add any override values that are not in the template variables
-        # This allows users to add new environment variables via the env-vars file
+        # Add override values that are not in template variables
         for name, value in self.override_values.items():
-            if name not in result:
+            if name not in self.variables:
                 result[name] = self._stringify_value(value)
 
         return result

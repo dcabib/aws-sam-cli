@@ -1,351 +1,143 @@
 """
-Local Lambda Function URL Service implementation
+Connects the CLI with Local Function URL service.
 """
 
 import logging
-import signal
-import socket
-import sys
-import time
-from concurrent.futures import ThreadPoolExecutor
-from threading import Event
-from typing import Any, Dict, Optional, Set, Tuple
 
-from samcli.commands.local.cli_common.invoke_context import InvokeContext
 from samcli.commands.local.lib.exceptions import NoFunctionUrlsDefined
-from samcli.commands.local.lib.function_url_handler import FunctionUrlHandler
+from samcli.lib.providers.function_url_provider import FunctionUrlProvider
+from samcli.local.function_urls.local_function_url_service import LocalFunctionUrlsService
 
 LOG = logging.getLogger(__name__)
 
 
-class PortExhaustedException(Exception):
-    """Exception raised when no ports are available in the specified range"""
-
-    pass
-
-
 class LocalFunctionUrlService:
     """
-    Local service for Lambda Function URLs following SAM CLI patterns
-
-    This service coordinates the startup and management of multiple
-    Lambda Function URL services, each running on its own port.
+    Implementation of Local Function URL service that is capable of serving Functions with Function URLs
+    defined in a configuration file that invoke a Lambda function.
     """
 
     def __init__(
         self,
-        lambda_invoke_context: InvokeContext,
-        port_range: Tuple[int, int] = (3001, 3010),
-        host: str = "127.0.0.1",
-        disable_authorizer: bool = False,
+        lambda_invoke_context,
+        port=None,
+        host="127.0.0.1",
+        port_range="3001-3010",
+        function_name=None,
+        disable_authorizer=False,
     ):
         """
-        Initialize the Function URL service
+        Initialize the local Function URL service.
 
-        Parameters
-        ----------
-        lambda_invoke_context : InvokeContext
-            SAM CLI invoke context with Lambda runtime
-        port_range : Tuple[int, int]
-            Port range for auto-assignment (start, end)
-        host : str
-            Host to bind services to
-        disable_authorizer : bool
-            Whether to disable authorization checks
+        :param samcli.commands.local.cli_common.invoke_context.InvokeContext lambda_invoke_context: Context object
+            that can help with Lambda invocation
+        :param int port: Port to listen on for single function mode
+        :param string host: Local hostname or IP address to bind to
+        :param string port_range: Port range for auto-assignment
+        :param string function_name: Optional, specific function to start
+        :param bool disable_authorizer: Optional, flag for disabling authorization checks
         """
-        self.invoke_context = lambda_invoke_context
+
+        self.port = port
         self.host = host
         self.port_range = port_range
+        self.function_name = function_name
         self.disable_authorizer = disable_authorizer
 
-        # Port management
-        self._used_ports: Set[int] = set()
-        self._port_start, self._port_end = port_range
-
-        # Service management
-        self.function_urls: Dict[str, Dict[str, Any]] = {}
-        self.services: Dict[str, FunctionUrlHandler] = {}
-        self.executor: Optional[ThreadPoolExecutor] = None
-        self.futures: Dict[str, Any] = {}
-        self._shutdown_event = Event()
-
-        # Discover function URLs
-        self._discover_function_urls()
-
-    def _discover_function_urls(self):
-        """Discover functions with FunctionUrlConfig in the template"""
-        self.function_urls = {}
-
-        # Use the function provider to get all functions
-        from samcli.lib.providers.sam_function_provider import SamFunctionProvider
-
-        function_provider = SamFunctionProvider(stacks=self.invoke_context.stacks, use_raw_codeuri=True)
-
-        # Get all functions and check for Function URL configs
-        for function in function_provider.get_all():
-            if function.function_url_config:
-                # Extract the configuration
-                config = function.function_url_config
-                self.function_urls[function.name] = {
-                    "auth_type": config.get("AuthType", "AWS_IAM"),
-                    "cors": config.get("Cors", {}),
-                    "invoke_mode": config.get("InvokeMode", "BUFFERED"),
-                }
-
-        if not self.function_urls:
-            raise NoFunctionUrlsDefined(
-                "No Lambda functions with FunctionUrlConfig found in template.\\n"
-                "Add FunctionUrlConfig to your Lambda functions to use this feature.\\n"
-                "Example:\\n"
-                "  MyFunction:\\n"
-                "    Type: AWS::Serverless::Function\\n"
-                "    Properties:\\n"
-                "      FunctionUrlConfig:\\n"
-                "        AuthType: NONE"
-            )
-
-    def _allocate_port(self) -> int:
-        """
-        Allocate next available port in range
-
-        Returns
-        -------
-        int
-            An available port number
-
-        Raises
-        ------
-        PortExhaustedException
-            When no ports are available in the specified range
-        """
-        for port in range(self._port_start, self._port_end + 1):
-            if port not in self._used_ports:
-                # Actually check if the port is available by trying to bind to it
-                if self._is_port_available(port):
-                    self._used_ports.add(port)
-                    return port
-        raise PortExhaustedException(f"No available ports in range {self._port_start}-{self._port_end}")
-
-    def _is_port_available(self, port: int) -> bool:
-        """
-        Check if a port is available by attempting to bind to it
-
-        Parameters
-        ----------
-        port : int
-            Port number to check
-
-        Returns
-        -------
-        bool
-            True if port is available, False otherwise
-        """
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                sock.bind((self.host, port))
-                return True
-        except OSError:
-            LOG.debug(f"Port {port} is already in use")
-            return False
-
-    def _start_function_service(self, func_name: str, func_config: Dict, port: int) -> FunctionUrlHandler:
-        """Start individual function URL service"""
-        service = FunctionUrlHandler(
-            function_name=func_name,
-            function_config=func_config,
-            local_lambda_runner=self.invoke_context.local_lambda_runner,
-            port=port,
-            host=self.host,
-            disable_authorizer=self.disable_authorizer,
-            stderr=self.invoke_context.stderr,
-            ssl_context=None,
-        )
-        return service
+        self.cwd = lambda_invoke_context.get_cwd()
+        self.function_url_provider = FunctionUrlProvider(lambda_invoke_context.stacks, cwd=self.cwd)
+        self.lambda_runner = lambda_invoke_context.local_lambda_runner
+        self.stderr_stream = lambda_invoke_context.stderr
 
     def start(self):
         """
-        Start the Function URL services. This method will block until stopped.
+        Creates and starts the local Function URL service. This method will block until the service is stopped
+        manually using an interrupt. After the service is started, callers can make HTTP requests to the endpoints
+        to invoke the Lambda function and receive a response.
+
+        NOTE: This is a blocking call that will not return until the thread is interrupted with SIGINT/SIGTERM
         """
-        if not self.function_urls:
-            raise NoFunctionUrlsDefined("No Function URLs found to start")
 
-        # Setup signal handlers
-        def signal_handler(sig, frame):
-            LOG.info("Received interrupt signal. Shutting down...")
-            self._shutdown_event.set()
+        if not self.function_url_provider.function_urls:
+            raise NoFunctionUrlsDefined("No Function URLs available in template")
 
-        signal.signal(signal.SIGINT, signal_handler)
-        signal.signal(signal.SIGTERM, signal_handler)
+        # Smart single-function detection and validation (addresses valerena's issue #69)
+        available_functions = [fu.function_name for fu in self.function_url_provider.function_urls]
 
-        # Start services
-        self.executor = ThreadPoolExecutor(max_workers=len(self.function_urls))
+        if self.function_name:
+            # Validate the specified function exists
+            if self.function_name not in available_functions:
+                functions_list = ", ".join(available_functions)
+                raise NoFunctionUrlsDefined(
+                    f"Function '{self.function_name}' not found. Available functions: {functions_list}"
+                )
+        elif len(available_functions) == 1 and self.port:
+            # Auto-select single function when port is specified
+            self.function_name = available_functions[0]
+            LOG.info(f"Auto-selecting function '{self.function_name}' (only function with Function URL configuration)")
 
-        try:
-            # Start each function service
-            for func_name, func_config in self.function_urls.items():
-                port = self._allocate_port()
-                service = self._start_function_service(func_name, func_config, port)
-                self.services[func_name] = service
+        # We care about passing only stderr to the Service and not stdout because stdout from Docker container
+        # contains the response to the function which is sent out as HTTP response. Only stderr needs to be printed
+        # to the console or a log file. stderr from Docker container contains runtime logs and output of print
+        # statements from the Lambda function
+        service = LocalFunctionUrlsService(
+            function_urls=self.function_url_provider.function_urls,
+            lambda_runner=self.lambda_runner,
+            port=self.port,
+            host=self.host,
+            port_range=self.port_range,
+            function_name=self.function_name,
+            disable_authorizer=self.disable_authorizer,
+            stderr=self.stderr_stream,
+        )
 
-                # Start the service (this runs Flask in a thread)
-                service.start()
+        service.create()
 
-                # Wait for the service to be ready
-                if not self._wait_for_service(port):
-                    LOG.warning(f"Service for {func_name} on port {port} did not start properly")
+        # Print out the list of function URLs that will be mounted
+        self._print_function_urls(self.function_url_provider.function_urls, self.host, self.port, self.port_range)
+        LOG.info(
+            "You can now browse to the above endpoints to invoke your functions. "
+            "You do not need to restart/reload SAM CLI while working on your functions, "
+            "changes will be reflected instantly/automatically. If you used sam build before "
+            "running local commands, you will need to re-run sam build for the changes "
+            "to be picked up. You only need to restart SAM CLI if you update your AWS SAM template"
+        )
 
-            # Print startup info
-            self._print_startup_info()
+        service.run()
 
-            # Wait for shutdown signal
-            self._shutdown_event.wait()
-
-        except KeyboardInterrupt:
-            LOG.info("Received keyboard interrupt")
-        finally:
-            self._shutdown_services()
-
-    def start_all(self):
+    @staticmethod
+    def _print_function_urls(function_urls, host, single_port, port_range):
         """
-        Start all Function URL services. Alias for start() method.
+        Helper method to print the Function URLs that will be mounted. This method is purely for printing purposes.
+        Follows the same format as LocalApiService._print_routes for consistency.
+
+        :param list function_urls: List of function URL configurations
+        :param string host: Host name where the service is running
+        :param int single_port: Single port if specified for single function
+        :param string port_range: Port range for auto-assignment
+        :returns list(string): List of lines that were printed to the console. Helps with testing
         """
-        return self.start()
 
-    def start_function(self, function_name: str, port: int):
-        """
-        Start a specific function URL service on the given port.
+        print_lines = []
 
-        Args:
-            function_name: Name of the function to start
-            port: Port to bind the service to
-        """
-        if function_name not in self.function_urls:
-            raise NoFunctionUrlsDefined(f"Function {function_name} does not have a Function URL configured")
+        # Determine starting port
+        if single_port and len(function_urls) == 1:
+            start_port = single_port
+        elif isinstance(port_range, str) and "-" in port_range:
+            start_port, _ = map(int, port_range.split("-"))
+        else:
+            start_port = 3001
 
-        # Setup signal handlers
-        def signal_handler(sig, frame):
-            LOG.info("Received interrupt signal. Shutting down...")
-            self._shutdown_event.set()
+        current_port = start_port
 
-        signal.signal(signal.SIGINT, signal_handler)
-        signal.signal(signal.SIGTERM, signal_handler)
+        for function_url in function_urls:
+            function_name = function_url.function_name
 
-        function_url_config = self.function_urls[function_name]
-        service = self._start_function_service(function_name, function_url_config, port)
-        self.services[function_name] = service
+            # Format matches LocalApiService._print_routes format for consistency
+            output = "Mounting {} at http://{}:{}/".format(function_name, host, current_port)
+            print_lines.append(output)
+            LOG.info(output)
 
-        # Start the service (this runs Flask in a thread)
-        service.start()
+            current_port += 1
 
-        # Start service in thread
-        self.executor = ThreadPoolExecutor(max_workers=1)
-
-        # Print startup info for single function
-        url = f"http://{self.host}:{port}/"
-        auth_type = function_url_config["auth_type"]
-        cors_enabled = bool(function_url_config.get("cors"))
-
-        print("\\n" + "=" * 60)
-        print("SAM Local Function URL")
-        print("=" * 60)
-        print(f"\\n  {function_name}:")
-        print(f"    URL: {url}")
-        print(f"    Auth: {auth_type}")
-        print(f"    CORS: {'Enabled' if cors_enabled else 'Disabled'}")
-        print("\\n" + "=" * 60)
-
-        try:
-            # Wait for shutdown signal
-            self._shutdown_event.wait()
-        except KeyboardInterrupt:
-            LOG.info("Received keyboard interrupt")
-        finally:
-            self._shutdown_services()
-
-    def _wait_for_service(self, port: int, timeout: int = 5) -> bool:
-        """
-        Wait for a service to be ready on the specified port
-
-        Parameters
-        ----------
-        port : int
-            Port to check
-        timeout : int
-            Maximum time to wait in seconds
-
-        Returns
-        -------
-        bool
-            True if service is ready, False otherwise
-        """
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            try:
-                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                    sock.settimeout(1)
-                    result = sock.connect_ex((self.host, port))
-                    if result == 0:
-                        # Give Flask a bit more time to fully initialize
-                        time.sleep(0.2)
-                        return True
-            except socket.error:
-                pass
-            time.sleep(0.1)
-        return False
-
-    def _print_startup_info(self):
-        """Print service startup information"""
-        print("\\n" + "=" * 60)
-        print("SAM Local Function URLs")
-        print("=" * 60)
-
-        for func_name, func_config in self.function_urls.items():
-            service = self.services.get(func_name)
-            if service:
-                port = service.port
-                url = f"http://{self.host}:{port}/"
-                auth_type = func_config["auth_type"]
-                cors_enabled = bool(func_config.get("cors"))
-
-                print(f"\\n  {func_name}:")
-                print(f"    URL: {url}")
-                print(f"    AuthType: {auth_type}")
-                if cors_enabled:
-                    print("    CORS: Enabled")
-
-        print("\\n" + "=" * 60, file=sys.stderr)
-        print("Function URL services started. Press CTRL+C to stop.\\n", file=sys.stderr)
-
-    def _shutdown_services(self):
-        """Shutdown all running services"""
-        LOG.info("Shutting down Function URL services...")
-
-        # Stop all services
-        for service in self.services.values():
-            try:
-                service.stop()
-            except Exception as e:
-                LOG.warning(f"Error stopping service: {e}")
-
-        # Shutdown executor
-        if self.executor:
-            self.executor.shutdown(wait=True)
-
-        LOG.info("All services stopped")
-
-    def get_service_status(self) -> Dict[str, Dict[str, Any]]:
-        """Get status of all running services"""
-        status = {}
-        for func_name in self.function_urls:
-            service = self.services.get(func_name)
-            future = self.futures.get(func_name)
-
-            status[func_name] = {
-                "port": service.port if service else None,
-                "running": future and not future.done() if future else False,
-                "auth_type": self.function_urls[func_name]["auth_type"],
-                "cors": bool(self.function_urls[func_name].get("cors")),
-            }
-
-        return status
+        return print_lines

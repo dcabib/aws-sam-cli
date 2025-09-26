@@ -157,7 +157,7 @@ class TestFunctionUrlHandler(unittest.TestCase):
 
     @patch("samcli.commands.local.lib.function_url_handler.Flask")
     def test_init_creates_flask_app(self, flask_mock):
-        """Test that FunctionUrlHandler initializes Flask app correctly"""
+        """Test that FunctionUrlHandler creates Flask app in create() method (BaseLocalService pattern)"""
         app_mock = Mock()
         flask_mock.return_value = app_mock
 
@@ -172,11 +172,15 @@ class TestFunctionUrlHandler(unittest.TestCase):
             is_debugging=self.is_debugging,
         )
 
-        # Flask is initialized with the module name
-        flask_mock.assert_called_once_with("samcli.commands.local.lib.function_url_handler")
-        self.assertEqual(service.app, app_mock)
+        # Flask should not be called during init
+        flask_mock.assert_not_called()
         self.assertEqual(service.function_name, self.function_name)
         self.assertEqual(service.local_lambda_runner, self.local_lambda_runner)
+
+        # Now call create() and Flask should be initialized
+        service.create()
+        flask_mock.assert_called_once_with("samcli.commands.local.lib.function_url_handler")
+        self.assertEqual(service._app, app_mock)
 
     @patch("samcli.commands.local.lib.function_url_handler.Thread")
     @patch("samcli.commands.local.lib.function_url_handler.Flask")
@@ -206,7 +210,7 @@ class TestFunctionUrlHandler(unittest.TestCase):
 
     @patch("samcli.commands.local.lib.function_url_handler.Flask")
     def test_run_flask(self, flask_mock):
-        """Test the Flask app.run is called with correct parameters"""
+        """Test the Flask app.run is called with correct parameters after create()"""
         app_mock = Mock()
         flask_mock.return_value = app_mock
 
@@ -220,6 +224,9 @@ class TestFunctionUrlHandler(unittest.TestCase):
             stderr=self.stderr,
             is_debugging=self.is_debugging,
         )
+
+        # Need to call create() first to initialize Flask app
+        service.create()
 
         # Call the internal _run_flask method directly
         service._run_flask()
@@ -251,7 +258,7 @@ class TestFunctionUrlHandler(unittest.TestCase):
 
     @patch("samcli.commands.local.lib.function_url_handler.Flask")
     def test_configure_routes(self, flask_mock):
-        """Test that routes are configured correctly"""
+        """Test that routes are configured correctly after create() is called"""
         app_mock = Mock()
         flask_mock.return_value = app_mock
 
@@ -266,7 +273,13 @@ class TestFunctionUrlHandler(unittest.TestCase):
             is_debugging=self.is_debugging,
         )
 
-        # Verify routes were registered
+        # Routes should not be configured during init
+        self.assertEqual(app_mock.route.call_count, 0)
+
+        # Call create() to configure routes
+        service.create()
+
+        # Verify routes were registered after create()
         self.assertEqual(app_mock.route.call_count, 2)  # Two route decorators
 
         # Check the route paths

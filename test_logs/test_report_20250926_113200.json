@@ -1,0 +1,126 @@
+{
+  "timestamp": "2025-09-26T11:32:00.863133",
+  "duration": "0:00:42.537331",
+  "results": {
+    "integration_tests": {
+      "cdk": {
+        "returncode": 0,
+        "log_file": "test_logs/integration_tests_cdk_20250926_113224.log",
+        "analysis": {
+          "errors": [],
+          "warnings": [
+            {
+              "type": "Warning",
+              "message": "This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.\\x1b[0m\\n'"
+            },
+            {
+              "type": "Warning",
+              "message": "unclosed file <_io.BufferedWriter name=17>"
+            },
+            {
+              "type": "Warning",
+              "message": "unclosed file <_io.BufferedReader name=19>"
+            },
+            {
+              "type": "Warning",
+              "message": "unclosed file <_io.BufferedReader name=22>"
+            },
+            {
+              "type": "ResourceWarning",
+              "message": "unclosed file <_io.BufferedWriter name=17>"
+            },
+            {
+              "type": "ResourceWarning",
+              "message": "unclosed file <_io.BufferedReader name=19>"
+            },
+            {
+              "type": "ResourceWarning",
+              "message": "unclosed file <_io.BufferedReader name=22>"
+            }
+          ],
+          "failed_tests": [],
+          "failed_tests_detailed": [],
+          "passed_tests": 2,
+          "failed_count": 0,
+          "skipped_count": 0,
+          "error_patterns": [],
+          "coverage_info": {},
+          "make_failures": [],
+          "import_errors": []
+        },
+        "success": true
+      },
+      "cloudformation": {
+        "returncode": 0,
+        "log_file": "test_logs/integration_tests_cloudformation_20250926_113242.log",
+        "analysis": {
+          "errors": [],
+          "warnings": [
+            {
+              "type": "Warning",
+              "message": "This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.\\x1b[0m\\n'"
+            },
+            {
+              "type": "Warning",
+              "message": "unclosed file <_io.BufferedWriter name=17>"
+            },
+            {
+              "type": "Warning",
+              "message": "unclosed file <_io.BufferedReader name=19>"
+            },
+            {
+              "type": "Warning",
+              "message": "unclosed file <_io.BufferedReader name=22>"
+            },
+            {
+              "type": "ResourceWarning",
+              "message": "unclosed file <_io.BufferedWriter name=17>"
+            },
+            {
+              "type": "ResourceWarning",
+              "message": "unclosed file <_io.BufferedReader name=19>"
+            },
+            {
+              "type": "ResourceWarning",
+              "message": "unclosed file <_io.BufferedReader name=22>"
+            }
+          ],
+          "failed_tests": [],
+          "failed_tests_detailed": [],
+          "passed_tests": 1,
+          "failed_count": 0,
+          "skipped_count": 0,
+          "error_patterns": [],
+          "coverage_info": {},
+          "make_failures": [],
+          "import_errors": []
+        },
+        "success": true
+      },
+      "sam": {
+        "returncode": 5,
+        "log_file": "test_logs/integration_tests_sam_20250926_113243.log",
+        "analysis": {
+          "errors": [],
+          "warnings": [],
+          "failed_tests": [],
+          "failed_tests_detailed": [],
+          "passed_tests": 0,
+          "failed_count": 0,
+          "skipped_count": 0,
+          "error_patterns": [],
+          "coverage_info": {},
+          "make_failures": [],
+          "collection_issue": "No tests collected",
+          "collection_reason": "No tests found to run",
+          "import_errors": []
+        },
+        "success": false
+      },
+      "total_passed": 3,
+      "total_failed": 0,
+      "success": false
+    }
+  },
+  "overall_success": false
+}

@@ -1,0 +1,366 @@
+{
+  "timestamp": "2025-09-26T11:26:26.958684",
+  "duration": "0:02:24.234419",
+  "results": {
+    "unit_tests": {
+      "returncode": 0,
+      "log_file": "test_logs/unit_tests_20250926_112627.log",
+      "analysis": {
+        "errors": [],
+        "warnings": [],
+        "failed_tests": [],
+        "failed_tests_detailed": [],
+        "passed_tests": 24,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "error_patterns": [],
+        "coverage_info": {},
+        "make_failures": [],
+        "import_errors": []
+      },
+      "success": true
+    },
+    "integration_tests": {
+      "cdk": {
+        "returncode": 0,
+        "log_file": "test_logs/integration_tests_cdk_20250926_112655.log",
+        "analysis": {
+          "errors": [],
+          "warnings": [
+            {
+              "type": "Warning",
+              "message": "This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.\\x1b[0m\\n'"
+            },
+            {
+              "type": "Warning",
+              "message": "unclosed file <_io.BufferedWriter name=17>"
+            },
+            {
+              "type": "Warning",
+              "message": "unclosed file <_io.BufferedReader name=19>"
+            },
+            {
+              "type": "Warning",
+              "message": "unclosed file <_io.BufferedReader name=22>"
+            },
+            {
+              "type": "ResourceWarning",
+              "message": "unclosed file <_io.BufferedWriter name=17>"
+            },
+            {
+              "type": "ResourceWarning",
+              "message": "unclosed file <_io.BufferedReader name=19>"
+            },
+            {
+              "type": "ResourceWarning",
+              "message": "unclosed file <_io.BufferedReader name=22>"
+            }
+          ],
+          "failed_tests": [],
+          "failed_tests_detailed": [],
+          "passed_tests": 2,
+          "failed_count": 0,
+          "skipped_count": 0,
+          "error_patterns": [],
+          "coverage_info": {},
+          "make_failures": [],
+          "import_errors": []
+        },
+        "success": true
+      },
+      "cloudformation": {
+        "returncode": 0,
+        "log_file": "test_logs/integration_tests_cloudformation_20250926_112719.log",
+        "analysis": {
+          "errors": [],
+          "warnings": [
+            {
+              "type": "Warning",
+              "message": "This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.\\x1b[0m\\n'"
+            },
+            {
+              "type": "Warning",
+              "message": "unclosed file <_io.BufferedWriter name=17>"
+            },
+            {
+              "type": "Warning",
+              "message": "unclosed file <_io.BufferedReader name=19>"
+            },
+            {
+              "type": "Warning",
+              "message": "unclosed file <_io.BufferedReader name=22>"
+            },
+            {
+              "type": "ResourceWarning",
+              "message": "unclosed file <_io.BufferedWriter name=17>"
+            },
+            {
+              "type": "ResourceWarning",
+              "message": "unclosed file <_io.BufferedReader name=19>"
+            },
+            {
+              "type": "ResourceWarning",
+              "message": "unclosed file <_io.BufferedReader name=22>"
+            }
+          ],
+          "failed_tests": [],
+          "failed_tests_detailed": [],
+          "passed_tests": 1,
+          "failed_count": 0,
+          "skipped_count": 0,
+          "error_patterns": [],
+          "coverage_info": {},
+          "make_failures": [
+            {
+              "pattern": "Error: (.*)",
+              "match": "Error: 500 Server Error: Internal Server Error for url: http+docker://localhost/v1.35/distribution/public.ecr.aws/lambda/python:3.9-x86_64/json\\n'",
+              "groups": [
+                "500 Server Error: Internal Server Error for url: http+docker://localhost/v1.35/distribution/public.ecr.aws/lambda/python:3.9-x86_64/json\\n'"
+              ]
+            },
+            {
+              "pattern": "Error: (.*)",
+              "match": "Error: 500 Server Error for http+docker://localhost/v1.35/distribution/public.ecr.aws/lambda/python:3.9-x86_64/json: Internal Server Error (\"Head \"https://public.ecr.aws/v2/lambda/python/manifests/3.9-x86_64\": Get \"https://public.ecr.aws/token/?scope=repository%3Alambda%2Fpython%3Apull&service=public.ecr.aws\": net/http: request canceled while waiting for connection (Client.Timeout exceeded while awaiting headers)\")\\n'",
+              "groups": [
+                "500 Server Error for http+docker://localhost/v1.35/distribution/public.ecr.aws/lambda/python:3.9-x86_64/json: Internal Server Error (\"Head \"https://public.ecr.aws/v2/lambda/python/manifests/3.9-x86_64\": Get \"https://public.ecr.aws/token/?scope=repository%3Alambda%2Fpython%3Apull&service=public.ecr.aws\": net/http: request canceled while waiting for connection (Client.Timeout exceeded while awaiting headers)\")\\n'"
+              ]
+            },
+            {
+              "pattern": "Error: (.*)",
+              "match": "Error: 500 Server Error for http+docker://localhost/v1.35/distribution/public.ecr.aws/lambda/python:3.9-x86_64/json: Internal Server Error (\"Head \"https://public.ecr.aws/v2/lambda/python/manifests/3.9-x86_64\": Get \"https://public.ecr.aws/token/?scope=repository%3Alambda%2Fpython%3Apull&service=public.ecr.aws\": net/http: request canceled while waiting for connection (Client.Timeout exceeded while awaiting headers)\")\\n'",
+              "groups": [
+                "500 Server Error for http+docker://localhost/v1.35/distribution/public.ecr.aws/lambda/python:3.9-x86_64/json: Internal Server Error (\"Head \"https://public.ecr.aws/v2/lambda/python/manifests/3.9-x86_64\": Get \"https://public.ecr.aws/token/?scope=repository%3Alambda%2Fpython%3Apull&service=public.ecr.aws\": net/http: request canceled while waiting for connection (Client.Timeout exceeded while awaiting headers)\")\\n'"
+              ]
+            }
+          ],
+          "import_errors": []
+        },
+        "success": true
+      },
+      "sam": {
+        "returncode": 5,
+        "log_file": "test_logs/integration_tests_sam_20250926_112719.log",
+        "analysis": {
+          "errors": [],
+          "warnings": [],
+          "failed_tests": [],
+          "failed_tests_detailed": [],
+          "passed_tests": 0,
+          "failed_count": 0,
+          "skipped_count": 0,
+          "error_patterns": [],
+          "coverage_info": {},
+          "make_failures": [],
+          "import_errors": []
+        },
+        "success": false
+      },
+      "total_passed": 3,
+      "total_failed": 0,
+      "success": false
+    },
+    "make_pr": {
+      "returncode": 0,
+      "log_file": "test_logs/make_pr_20250926_112851.log",
+      "analysis": {
+        "errors": [],
+        "warnings": [
+          {
+            "type": "Warning",
+            "message": "unused section(s) in mypy.ini: [mypy-tests.integration.testdata.*], [mypy-serverlessrepo], [mypy-serverlessrepo.*], [mypy-samtranslator], [mypy-cfnlint], [mypy-samcli.lib.utils.git_repo.py]"
+          }
+        ],
+        "failed_tests": [],
+        "failed_tests_detailed": [],
+        "passed_tests": 5934,
+        "failed_count": 0,
+        "skipped_count": 22,
+        "error_patterns": [],
+        "coverage_info": {
+          "total": "94",
+          "required": "94",
+          "actual": "93.80",
+          "failed": true
+        },
+        "make_failures": [
+          {
+            "pattern": "FAIL (.*)",
+            "match": "Fail if coverage falls below 95%",
+            "groups": [
+              "if coverage falls below 95%"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 12%]",
+            "groups": [
+              "PASSED [ 12%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 12%]",
+            "groups": [
+              "PASSED [ 12%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 25%]",
+            "groups": [
+              "PASSED [ 25%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 26%]",
+            "groups": [
+              "PASSED [ 26%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 36%]",
+            "groups": [
+              "PASSED [ 36%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 36%]",
+            "groups": [
+              "PASSED [ 36%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 38%]",
+            "groups": [
+              "PASSED [ 38%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 39%]",
+            "groups": [
+              "PASSED [ 39%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 39%]",
+            "groups": [
+              "PASSED [ 39%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 39%]",
+            "groups": [
+              "PASSED [ 39%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 39%]",
+            "groups": [
+              "PASSED [ 39%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 39%]",
+            "groups": [
+              "PASSED [ 39%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 39%]",
+            "groups": [
+              "PASSED [ 39%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 56%]",
+            "groups": [
+              "PASSED [ 56%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 61%]",
+            "groups": [
+              "PASSED [ 61%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 62%]",
+            "groups": [
+              "PASSED [ 62%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 80%]",
+            "groups": [
+              "PASSED [ 80%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 81%]",
+            "groups": [
+              "PASSED [ 81%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 81%]",
+            "groups": [
+              "PASSED [ 81%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 82%]",
+            "groups": [
+              "PASSED [ 82%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 82%]",
+            "groups": [
+              "PASSED [ 82%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "FAIL Required test coverage of 94% not reached. Total coverage: 93.80%",
+            "groups": [
+              "Required test coverage of 94% not reached. Total coverage: 93.80%"
+            ]
+          },
+          {
+            "pattern": "mypy.*error",
+            "match": "mypy.ini: [mypy]: warn_unused_ignores: Not a boolean: False # @jfuss Done as a stop gap since different py versions have different error",
+            "groups": []
+          }
+        ],
+        "import_errors": []
+      },
+      "checks": {
+        "format": true,
+        "lint": false,
+        "typecheck": true,
+        "tests": true,
+        "coverage": true
+      },
+      "success": true
+    }
+  },
+  "overall_success": false
+}

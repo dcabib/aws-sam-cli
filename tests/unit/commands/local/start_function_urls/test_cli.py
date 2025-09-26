@@ -94,12 +94,14 @@ class TestCli(TestCase):
 
         service_mock.assert_called_with(
             lambda_invoke_context=context_mock,
-            port_range=(3001, 3010),
+            port=self.port,
             host=self.host,
+            port_range=self.port_range,
+            function_name=self.function_name,
             disable_authorizer=self.disable_authorizer,
         )
 
-        manager_mock.start_all.assert_called_with()
+        manager_mock.start.assert_called_with()
 
     @patch("samcli.commands.local.cli_common.invoke_context.InvokeContext")
     @patch("samcli.commands.local.lib.local_function_url_service.LocalFunctionUrlService")
@@ -116,7 +118,8 @@ class TestCli(TestCase):
 
         self.call_cli()
 
-        manager_mock.start_function.assert_called_with("MyFunction", 3005)
+        # With function_name and port set, should call start() which handles both cases
+        manager_mock.start.assert_called_with()
 
     @patch("samcli.commands.local.cli_common.invoke_context.InvokeContext")
     @patch("samcli.commands.local.lib.local_function_url_service.LocalFunctionUrlService")
@@ -130,13 +133,13 @@ class TestCli(TestCase):
 
         from samcli.commands.local.lib.exceptions import NoFunctionUrlsDefined
 
-        manager_mock.start_all.side_effect = NoFunctionUrlsDefined("no function urls")
+        manager_mock.start.side_effect = NoFunctionUrlsDefined("no function urls")
 
         with self.assertRaises(UserException) as context:
             self.call_cli()
 
         msg = str(context.exception)
-        self.assertIn("no function urls", msg)
+        self.assertIn("Template does not have any Functions with Function URLs configured", msg)
 
     @parameterized.expand(
         [
@@ -181,11 +184,13 @@ class TestCli(TestCase):
 
         self.call_cli()
 
-        # Should parse as 3001-3011 (single port + 10)
+        # Should pass the string port_range to service constructor
         service_mock.assert_called_with(
             lambda_invoke_context=context_mock,
+            port=self.port,
             host=self.host,
-            port_range=(3001, 3011),
+            port_range=self.port_range,
+            function_name=self.function_name,
             disable_authorizer=self.disable_authorizer,
         )
 
@@ -211,13 +216,13 @@ class TestCli(TestCase):
 
         manager_mock = Mock()
         service_mock.return_value = manager_mock
-        manager_mock.start_all.side_effect = KeyboardInterrupt()
+        manager_mock.start.side_effect = KeyboardInterrupt()
 
         # Should not raise, just log and exit
         self.call_cli()
 
-        # Verify start_all was called before interrupt
-        manager_mock.start_all.assert_called_once()
+        # Verify start was called before interrupt
+        manager_mock.start.assert_called_once()
 
     @patch("samcli.commands.local.cli_common.invoke_context.InvokeContext")
     @patch("samcli.commands.local.lib.local_function_url_service.LocalFunctionUrlService")
@@ -228,7 +233,7 @@ class TestCli(TestCase):
 
         manager_mock = Mock()
         service_mock.return_value = manager_mock
-        manager_mock.start_all.side_effect = RuntimeError("Something went wrong")
+        manager_mock.start.side_effect = RuntimeError("Something went wrong")
 
         with self.assertRaises(UserException) as context:
             self.call_cli()
@@ -264,9 +269,9 @@ class TestCli(TestCase):
         start_function_urls_cli(
             ctx=self.ctx_mock,
             host=self.host,
+            port=self.port,
             port_range=self.port_range,
             function_name=self.function_name,
-            port=self.port,
             disable_authorizer=self.disable_authorizer,
             template=self.template,
             env_vars=self.env_vars,
@@ -288,5 +293,6 @@ class TestCli(TestCase):
             container_host_interface=self.container_host_interface,
             invoke_image=self.invoke_image,
             add_host=self.add_host,
+            hook_name=None,
             no_mem_limit=self.no_mem_limit,
         )

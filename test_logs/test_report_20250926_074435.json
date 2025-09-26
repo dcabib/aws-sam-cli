@@ -1,0 +1,21 @@
+{
+  "timestamp": "2025-09-26T07:44:35.467169",
+  "duration": "0:00:01.066568",
+  "results": {
+    "unit_tests": {
+      "returncode": 0,
+      "log_file": "test_logs/unit_tests_20250926_074436.log",
+      "analysis": {
+        "errors": [],
+        "warnings": [],
+        "failed_tests": [],
+        "passed_tests": 24,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "error_patterns": []
+      },
+      "success": true
+    }
+  },
+  "overall_success": true
+}

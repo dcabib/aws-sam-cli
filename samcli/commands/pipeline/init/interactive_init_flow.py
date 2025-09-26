@@ -80,9 +80,11 @@ class InteractiveInitFlow:
             generated_files = self._generate_from_custom_location()
         else:
             generated_files = self._generate_from_app_pipeline_templates()
-        click.secho(Colored().green("Successfully created the pipeline configuration file(s):"))
-        for file in generated_files:
-            click.secho(Colored().green(f"\t- {file}"))
+
+        if generated_files:
+            click.secho(Colored().green("Successfully created the pipeline configuration file(s):"))
+            for file in generated_files:
+                click.secho(Colored().green(f"\t- {file}"))
 
     def _generate_from_app_pipeline_templates(
         self,

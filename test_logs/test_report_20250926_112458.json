@@ -1,0 +1,209 @@
+{
+  "timestamp": "2025-09-26T11:24:58.808027",
+  "duration": "0:01:16.766334",
+  "results": {
+    "make_pr": {
+      "returncode": 0,
+      "log_file": "test_logs/make_pr_20250926_112615.log",
+      "analysis": {
+        "errors": [],
+        "warnings": [
+          {
+            "type": "Warning",
+            "message": "unused section(s) in mypy.ini: [mypy-tests.integration.testdata.*], [mypy-serverlessrepo], [mypy-serverlessrepo.*], [mypy-samtranslator], [mypy-cfnlint], [mypy-samcli.lib.utils.git_repo.py]"
+          }
+        ],
+        "failed_tests": [],
+        "failed_tests_detailed": [],
+        "passed_tests": 5934,
+        "failed_count": 0,
+        "skipped_count": 22,
+        "error_patterns": [],
+        "coverage_info": {
+          "total": "94",
+          "required": "94",
+          "actual": "93.78",
+          "failed": true
+        },
+        "make_failures": [
+          {
+            "pattern": "FAIL (.*)",
+            "match": "Fail if coverage falls below 95%",
+            "groups": [
+              "if coverage falls below 95%"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 12%]",
+            "groups": [
+              "PASSED [ 12%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 12%]",
+            "groups": [
+              "PASSED [ 12%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 25%]",
+            "groups": [
+              "PASSED [ 25%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 26%]",
+            "groups": [
+              "PASSED [ 26%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 36%]",
+            "groups": [
+              "PASSED [ 36%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 36%]",
+            "groups": [
+              "PASSED [ 36%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 38%]",
+            "groups": [
+              "PASSED [ 38%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 39%]",
+            "groups": [
+              "PASSED [ 39%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 39%]",
+            "groups": [
+              "PASSED [ 39%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 39%]",
+            "groups": [
+              "PASSED [ 39%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 39%]",
+            "groups": [
+              "PASSED [ 39%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 39%]",
+            "groups": [
+              "PASSED [ 39%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 39%]",
+            "groups": [
+              "PASSED [ 39%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 56%]",
+            "groups": [
+              "PASSED [ 56%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 61%]",
+            "groups": [
+              "PASSED [ 61%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 62%]",
+            "groups": [
+              "PASSED [ 62%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 80%]",
+            "groups": [
+              "PASSED [ 80%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 81%]",
+            "groups": [
+              "PASSED [ 81%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 81%]",
+            "groups": [
+              "PASSED [ 81%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 82%]",
+            "groups": [
+              "PASSED [ 82%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "fail PASSED [ 82%]",
+            "groups": [
+              "PASSED [ 82%]"
+            ]
+          },
+          {
+            "pattern": "FAIL (.*)",
+            "match": "FAIL Required test coverage of 94% not reached. Total coverage: 93.78%",
+            "groups": [
+              "Required test coverage of 94% not reached. Total coverage: 93.78%"
+            ]
+          },
+          {
+            "pattern": "mypy.*error",
+            "match": "mypy.ini: [mypy]: warn_unused_ignores: Not a boolean: False # @jfuss Done as a stop gap since different py versions have different error",
+            "groups": []
+          }
+        ],
+        "import_errors": []
+      },
+      "checks": {
+        "format": true,
+        "lint": false,
+        "typecheck": true,
+        "tests": true,
+        "coverage": true
+      },
+      "success": true
+    }
+  },
+  "overall_success": true
+}

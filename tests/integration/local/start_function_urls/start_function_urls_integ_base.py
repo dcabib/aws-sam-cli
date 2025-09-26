@@ -2,45 +2,33 @@
 Base class for start-function-urls integration tests
 """
 
-import json
-import os
-import random
-import re
-import select
-import shutil
-import tempfile
-import time
-import threading
-import uuid
 import logging
+import os
+import shutil
+import threading
+import time
+import uuid
 from pathlib import Path
-from subprocess import Popen, PIPE
-from typing import Optional, Dict, Any, List
-from unittest import TestCase, skipIf
+from subprocess import PIPE, Popen
+from typing import Dict, List, Optional
 
 import docker
 import requests
 from docker.errors import APIError
 from psutil import NoSuchProcess
 
-from tests.integration.local.common_utils import InvalidAddressException, random_port, wait_for_local_process
+from tests.integration.local.common_utils import InvalidAddressException, random_port
+from tests.integration.local.shared_start_service_base import SharedStartServiceBase
 from tests.testing_utils import (
-    RUNNING_ON_CI,
-    RUNNING_TEST_FOR_MASTER_ON_CI,
-    RUN_BY_CANARY,
-    SKIP_DOCKER_MESSAGE,
-    SKIP_DOCKER_TESTS,
-    run_command,
-    run_command_with_input,
     get_sam_command,
     kill_process,
+    run_command,
 )
 
 LOG = logging.getLogger(__name__)
 
 
-@skipIf(SKIP_DOCKER_TESTS, SKIP_DOCKER_MESSAGE)
-class StartFunctionUrlIntegBaseClass(TestCase):
+class StartFunctionUrlIntegBaseClass(SharedStartServiceBase):
     """
     Base class for start-function-urls integration tests
     """
@@ -121,10 +109,18 @@ class StartFunctionUrlIntegBaseClass(TestCase):
     @classmethod
     def start_function_urls_service(cls):
         """Start the function URLs service"""
-        command = get_sam_command()
-
-        command_list = cls.command_list or [command, "local", "start-function-urls", "--template", cls.template]
+        # Use development version of SAM CLI
+        command_list = cls.command_list or [
+            "python",
+            "-m",
+            "samcli",
+            "local",
+            "start-function-urls",
+            "--template",
+            cls.template,
+        ]
         command_list.extend(["--port-range", f"{cls.port}-{int(cls.port)+10}"])
+        command_list.extend(["--host", "127.0.0.1"])
         command_list.append("--beta-features")  # Add beta features flag to bypass prompt
 
         if cls.container_mode:
@@ -143,25 +139,95 @@ class StartFunctionUrlIntegBaseClass(TestCase):
         if cls.config_file:
             command_list += ["--config-file", cls.config_file]
 
+        # Set environment to enable beta features
+        import os
+
+        env = os.environ.copy()
+        env["SAM_CLI_BETA_FEATURES"] = "1"
+
         cls.start_function_urls_process = (
-            Popen(command_list, stderr=PIPE, stdout=PIPE)
+            Popen(command_list, stderr=PIPE, stdout=PIPE, stdin=PIPE, env=env)
             if not cls.project_directory
-            else Popen(command_list, stderr=PIPE, stdout=PIPE, cwd=cls.project_directory)
+            else Popen(command_list, stderr=PIPE, stdout=PIPE, stdin=PIPE, cwd=cls.project_directory, env=env)
         )
-        cls.start_function_urls_process_output = wait_for_local_process(
-            cls.start_function_urls_process, cls.port, collect_output=cls.do_collect_cmd_init_output
-        )
+
+        # Send 'y' to beta features prompt
+        try:
+            cls.start_function_urls_process.stdin.write(b"y\n")
+            cls.start_function_urls_process.stdin.flush()
+            cls.start_function_urls_process.stdin.close()
+        except Exception:
+            pass
+
+        # Wait for service to start and find actual port
+        import time
+        import requests
+
+        start_time = time.time()
+        actual_port = None
+
+        while time.time() - start_time < 30:  # 30 second timeout
+            # Check if process is still running
+            if cls.start_function_urls_process.poll() is not None:
+                # Process has terminated, get error output without communicate()
+                error_msg = f"Process terminated with code {cls.start_function_urls_process.returncode}"
+                try:
+                    # Try to read any remaining output
+                    stderr_data = cls.start_function_urls_process.stderr.read()
+                    stdout_data = cls.start_function_urls_process.stdout.read()
+                    if stderr_data:
+                        error_msg += f"\nStderr: {stderr_data.decode()}"
+                    if stdout_data:
+                        error_msg += f"\nStdout: {stdout_data.decode()}"
+                except Exception:
+                    pass
+                raise Exception(error_msg)
+
+            # Try ports in the range
+            for test_port in range(int(cls.port), int(cls.port) + 10):
+                try:
+                    response = requests.get(f"http://127.0.0.1:{test_port}/", timeout=1)
+                    if response.status_code in [200, 403, 404]:
+                        actual_port = test_port
+                        break
+                except requests.exceptions.RequestException:
+                    pass
+
+            if actual_port:
+                cls.port = str(actual_port)
+                break
+
+            time.sleep(1)
+
+        if not actual_port:
+            # Get final process output for debugging
+            if cls.start_function_urls_process.poll() is None:
+                cls.start_function_urls_process.terminate()
+                stdout, stderr = cls.start_function_urls_process.communicate()
+                error_msg = "Function URLs service did not start within timeout"
+                if stderr:
+                    error_msg += f"\nStderr: {stderr.decode()}"
+                if stdout:
+                    error_msg += f"\nStdout: {stdout.decode()}"
+                raise Exception(error_msg)
+            else:
+                raise Exception(f"Function URLs service did not start within timeout")
+
+        cls.start_function_urls_process_output = f"Service started on port {actual_port}"
 
         cls.stop_reading_thread = False
 
         def read_sub_process_stderr():
             while not cls.stop_reading_thread:
                 line = cls.start_function_urls_process.stderr.readline()
-                LOG.info(line)
+                if line and line.strip():
+                    LOG.info(line)
 
         def read_sub_process_stdout():
             while not cls.stop_reading_thread:
-                LOG.info(cls.start_function_urls_process.stdout.readline())
+                line = cls.start_function_urls_process.stdout.readline()
+                if line and line.strip():
+                    LOG.info(line)
 
         cls.read_threading = threading.Thread(target=read_sub_process_stderr, daemon=True)
         cls.read_threading.start()
@@ -192,7 +258,7 @@ class StartFunctionUrlIntegBaseClass(TestCase):
                 cls.start_function_urls_process.terminate()
                 try:
                     cls.start_function_urls_process.wait(timeout=2)
-                except:
+                except Exception:
                     # If that doesn't work, force kill
                     kill_process(cls.start_function_urls_process)
                 finally:
@@ -216,8 +282,9 @@ class StartFunctionUrlIntegBaseClass(TestCase):
     def setUp(self):
         """Set up test method"""
         super().setUp()
-        self.cmd = get_sam_command()
-        self.port = str(random.randint(3001, 4000))
+        # Use development version of SAM CLI
+        self.cmd = "python"
+        self.port = str(random_port())
         self.host = "127.0.0.1"
         self.url = f"http://{self.host}:{self.port}"
         self.process = None
@@ -227,8 +294,12 @@ class StartFunctionUrlIntegBaseClass(TestCase):
         """Tear down test method"""
         if self.process:
             try:
-                self.process.kill()
-            except:
+                self.process.terminate()
+                try:
+                    self.process.wait(timeout=5)
+                except Exception:
+                    self.process.kill()
+            except Exception:
                 pass
             self.process = None
         if self.thread:
@@ -245,33 +316,18 @@ class StartFunctionUrlIntegBaseClass(TestCase):
         docker_network: Optional[str] = None,
         container_host: Optional[str] = None,
         extra_args: Optional[str] = None,
-        timeout: int = 30,  # Increased timeout from 15 to 30 seconds
+        timeout: int = 15,
     ):
         """
         Start the function URLs service in a background thread
-
-        Parameters
-        ----------
-        template_path : str
-            Path to SAM template
-        port : Optional[str]
-            Port to run service on
-        env_vars : Optional[str]
-            Path to environment variables file
-        parameter_overrides : Optional[Dict[str, str]]
-            Parameter overrides for the template
-        docker_network : Optional[str]
-            Docker network to use
-        container_host : Optional[str]
-            Container host to use
-        extra_args : Optional[str]
-            Extra arguments to pass to the command
-        timeout : int
-            Timeout for starting the service
         """
         port_to_use = port or self.port
+
+        # Build command
         command_list = [
-            self.cmd,
+            "python",
+            "-m",
+            "samcli",
             "local",
             "start-function-urls",
             "--template",
@@ -280,53 +336,54 @@ class StartFunctionUrlIntegBaseClass(TestCase):
             f"{port_to_use}-{int(port_to_use)+10}",
             "--host",
             self.host,
-            "--beta-features",  # Add beta features flag to bypass prompt
+            "--beta-features",
         ]
 
         if env_vars:
             command_list.extend(["--env-vars", env_vars])
-
         if parameter_overrides:
             overrides = " ".join([f"{k}={v}" for k, v in parameter_overrides.items()])
             command_list.extend(["--parameter-overrides", overrides])
-
         if docker_network:
             command_list.extend(["--docker-network", docker_network])
-
         if container_host:
             command_list.extend(["--container-host", container_host])
-
         if extra_args:
             command_list.extend(extra_args.split())
 
-        def run_command():
-            import os
+        # Start service in background
+        import os
 
-            env = os.environ.copy()
-            env["SAM_CLI_BETA_FEATURES"] = "1"
-            self.process = run_command_with_input(command_list, b"y\n", env=env)
+        env = os.environ.copy()
+        env["SAM_CLI_BETA_FEATURES"] = "1"
 
-        self.thread = threading.Thread(target=run_command)
-        self.thread.start()
+        self.process = Popen(command_list, stdout=PIPE, stderr=PIPE, stdin=PIPE, env=env)
 
-        # Wait for service to start - try multiple ports in the range
+        # Send 'y' to beta features prompt
+        try:
+            if self.process.stdin:
+                self.process.stdin.write(b"y\n")
+                self.process.stdin.flush()
+        except Exception:
+            pass
+
+        # Wait for service to start
         start_time = time.time()
         port_range_start = int(port_to_use)
         port_range_end = port_range_start + 10
 
         while time.time() - start_time < timeout:
-            # Try all ports in the range
             for test_port in range(port_range_start, port_range_end + 1):
-                test_url = f"http://{self.host}:{test_port}"
                 try:
-                    response = requests.get(f"{test_url}/", timeout=2)  # Increased timeout
+                    response = requests.get(f"http://{self.host}:{test_port}/", timeout=1)
                     if response.status_code in [200, 403, 404]:
-                        # Give extra time for full initialization
-                        time.sleep(3)
+                        self.port = str(test_port)
+                        self.url = f"http://{self.host}:{test_port}"
+                        time.sleep(2)  # Give service time to fully initialize
                         return True
                 except requests.exceptions.RequestException:
                     pass
-            time.sleep(1)  # Increased sleep between retries
+            time.sleep(1)
 
         return False
 

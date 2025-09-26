@@ -2,29 +2,22 @@
 Integration tests for sam local start-function-urls command
 """
 
-import json
 import os
-import random
 import shutil
 import tempfile
 import time
-import threading
-from pathlib import Path
-from typing import Optional, Dict, Any
-from unittest import TestCase, skipIf
+from unittest import skipIf
 
 import requests
-from parameterized import parameterized, parameterized_class
+from parameterized import parameterized
 
 from tests.integration.local.start_function_urls.start_function_urls_integ_base import (
-    StartFunctionUrlIntegBaseClass,
     WritableStartFunctionUrlIntegBaseClass,
 )
 from tests.testing_utils import (
+    RUN_BY_CANARY,
     RUNNING_ON_CI,
     RUNNING_TEST_FOR_MASTER_ON_CI,
-    RUN_BY_CANARY,
-    run_command_with_input,
 )
 
 
@@ -509,7 +502,6 @@ def handler(event, context):
 
             # Start service with port range
             base_port = int(self.port)
-            port_range = f"{base_port}-{base_port+10}"
             self.assertTrue(
                 self.start_function_urls(
                     template_path, port=str(base_port)  # Use port parameter instead of extra_args
@@ -528,7 +520,7 @@ def handler(event, context):
                         data = response.json()
                         if "function" in data:
                             found_functions.append(data["function"])
-                except:
+                except Exception:
                     pass
 
             # We should find at least one function (Function1 or Function3, as Function2 has IAM auth)

@@ -139,7 +139,7 @@ class FunctionUrlHandler(BaseLocalService):
         function_name: str,
         function_config: Dict,
         local_lambda_runner,
-        port: int,  # local_lambda_runner is actually LocalLambdaRunner
+        port: int,
         host: str = "127.0.0.1",
         disable_authorizer: bool = False,
         stderr: Optional[StreamWriter] = None,
@@ -147,7 +147,7 @@ class FunctionUrlHandler(BaseLocalService):
         ssl_context=None,
     ):
         """
-        Initialize the Function URL service
+        Initialize the Function URL handler
 
         Parameters
         ----------
@@ -156,7 +156,7 @@ class FunctionUrlHandler(BaseLocalService):
         function_config : Dict
             Function URL configuration from template
         local_lambda_runner : LocalLambdaRunner
-            Lambda runner to execute functions (has provider and local_runtime)
+            Lambda runner to execute functions
         port : int
             Port to run the service on
         host : str
@@ -176,130 +176,141 @@ class FunctionUrlHandler(BaseLocalService):
         self.local_lambda_runner = local_lambda_runner
         self.disable_authorizer = disable_authorizer
         self.stderr = stderr or StreamWriter(sys.stderr)
-        self.app = Flask(__name__)
+        self._app = None
+
+    def create(self):
+        """
+        Creates a Flask Application that can be started.
+        """
+        self._app = Flask(__name__)
         self._configure_routes()
-        self._server_thread = None
 
     def _configure_routes(self):
         """Configure Flask routes for Function URL"""
 
-        @self.app.route(
+        @self._app.route(
             "/", defaults={"path": ""}, methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"]
         )
-        @self.app.route("/<path:path>", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
+        @self._app.route("/<path:path>", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
         def handle_request(path):
             """Handle all HTTP requests to Function URL"""
+            return self._handle_request(path)
 
-            # Build the full path
-            full_path = f"/{path}" if path else "/"
-
-            # Handle CORS preflight requests
-            if request.method == "OPTIONS":
-                return self._handle_cors_preflight()
-
-            # Format request to v2.0 payload
-            event = FunctionUrlPayloadFormatter._format_lambda_request(
-                method=request.method,
-                path=full_path,
-                headers=dict(request.headers),
-                query_params=request.args.to_dict(),
-                body=request.get_data(as_text=True) if request.data else None,
-                source_ip=request.remote_addr or "127.0.0.1",
-                user_agent=request.user_agent.string if request.user_agent else "",
-                host=self.host,
-                port=self.port,
-            )
-
-            # Check authorization if enabled
-            auth_type = self.function_config.get("auth_type", "AWS_IAM")
-            if auth_type == "AWS_IAM" and not self.disable_authorizer:
-                if not self._validate_iam_auth(request):
-                    return Response("Forbidden", status=403)
-
-            # Invoke Lambda function
-            try:
-                LOG.debug(f"Invoking function {self.function_name} with event: {json.dumps(event)[:500]}...")
-
-                # Get the function from the provider
-                function = self.local_lambda_runner.provider.get(self.function_name)
-                if not function:
-                    LOG.error(f"Function {self.function_name} not found")
-                    return Response("Function not found", status=404)
-
-                # Get the invoke configuration
-                config = self.local_lambda_runner.get_invoke_config(function)
-
-                # Create stream writers for stdout and stderr
-                stdout_stream = io.StringIO()
-                stderr_stream = io.StringIO()
-                stdout_writer = StreamWriter(stdout_stream)
-                stderr_writer = StreamWriter(stderr_stream)
-
-                # Invoke the function using the runtime directly
-                # The config already contains the proper environment variables from get_invoke_config
-                self.local_lambda_runner.local_runtime.invoke(
-                    config,
-                    json.dumps(event),
-                    debug_context=self.local_lambda_runner.debug_context,
-                    stdout=stdout_writer,
-                    stderr=stderr_writer,
-                    container_host=self.local_lambda_runner.container_host,
-                    container_host_interface=self.local_lambda_runner.container_host_interface,
-                    extra_hosts=self.local_lambda_runner.extra_hosts,
-                )
-
-                # Get the output
-                stdout = stdout_stream.getvalue()
-                stderr = stderr_stream.getvalue()
-
-                # Check for Lambda runtime errors in stderr
-                if stderr and ("errorMessage" in stderr or "errorType" in stderr):
-                    LOG.error(f"Lambda function {self.function_name} failed with error: {stderr}")
-                    return Response(
-                        json.dumps({"message": "Internal server error", "type": "LambdaFunctionError"}),
-                        status=502,
-                        headers={"Content-Type": "application/json"},
-                    )
-
-                # Parse Lambda response
-                try:
-                    lambda_response = json.loads(stdout) if stdout else {}
-                except json.JSONDecodeError as e:
-                    LOG.warning(f"Failed to parse Lambda response as JSON: {e}. Returning 502.")
-                    return Response(
-                        json.dumps({"message": "The Lambda function returned an invalid response"}),
-                        status=502,
-                        headers={"Content-Type": "application/json"},
-                    )
-
-                # Format response
-                status_code, headers, body = FunctionUrlPayloadFormatter._parse_lambda_response(lambda_response)
-
-                # Add CORS headers if configured
-                cors_headers = self._get_cors_headers()
-                headers.update(cors_headers)
-
-                return Response(body, status=status_code, headers=headers)
-
-            except Exception as e:
-                LOG.error(f"Error invoking function {self.function_name}: {e}", exc_info=True)
-                # Return 502 Bad Gateway for Lambda invocation errors
-                return Response(
-                    json.dumps({"message": "Bad Gateway", "error": str(e)}),
-                    status=502,
-                    headers={"Content-Type": "application/json"},
-                )
-
-        @self.app.errorhandler(404)
+        @self._app.errorhandler(404)
         def not_found(e):
             """Handle 404 errors"""
             return jsonify({"message": "Not found"}), 404
 
-        @self.app.errorhandler(500)
+        @self._app.errorhandler(500)
         def internal_error(e):
             """Handle 500 errors"""
             LOG.error(f"Internal server error: {e}")
             return jsonify({"message": "Internal server error"}), 500
+
+    def _handle_request(self, path):
+        """Handle individual HTTP request to Function URL"""
+        # Build the full path
+        full_path = f"/{path}" if path else "/"
+
+        # Handle CORS preflight requests
+        if request.method == "OPTIONS":
+            return self._handle_cors_preflight()
+
+        # Format request to v2.0 payload
+        event = FunctionUrlPayloadFormatter._format_lambda_request(
+            method=request.method,
+            path=full_path,
+            headers=dict(request.headers),
+            query_params=request.args.to_dict(),
+            body=request.get_data(as_text=True) if request.data else None,
+            source_ip=request.remote_addr or "127.0.0.1",
+            user_agent=request.user_agent.string if request.user_agent else "",
+            host=self.host,
+            port=self.port,
+        )
+
+        # Check authorization if enabled
+        auth_type = self.function_config.get("AuthType", "AWS_IAM")
+        if auth_type == "AWS_IAM" and not self.disable_authorizer:
+            if not self._validate_iam_auth(request):
+                LOG.warning(
+                    "Authorization failed - returning 403. "
+                    "Use --disable-authorizer flag to skip authorization checks entirely."
+                )
+                return Response("Forbidden", status=403)
+
+        # Invoke Lambda function
+        try:
+            LOG.debug(f"Invoking function {self.function_name} with event: {json.dumps(event)[:500]}...")
+
+            # Get the function from the provider
+            function = self.local_lambda_runner.provider.get(self.function_name)
+            if not function:
+                LOG.error(f"Function {self.function_name} not found")
+                return Response("Function not found", status=404)
+
+            # Get the invoke configuration
+            config = self.local_lambda_runner.get_invoke_config(function)
+
+            # Create stream writers for stdout and stderr
+            stdout_stream = io.StringIO()
+            stderr_stream = io.StringIO()
+            stdout_writer = StreamWriter(stdout_stream)
+            stderr_writer = StreamWriter(stderr_stream)
+
+            # Invoke the function using the runtime directly
+            self.local_lambda_runner.local_runtime.invoke(
+                config,
+                json.dumps(event),
+                debug_context=self.local_lambda_runner.debug_context,
+                stdout=stdout_writer,
+                stderr=stderr_writer,
+                container_host=self.local_lambda_runner.container_host,
+                container_host_interface=self.local_lambda_runner.container_host_interface,
+                extra_hosts=self.local_lambda_runner.extra_hosts,
+            )
+
+            # Get the output
+            stdout = stdout_stream.getvalue()
+            stderr = stderr_stream.getvalue()
+
+            # Check for Lambda runtime errors in stderr
+            if stderr and ("errorMessage" in stderr or "errorType" in stderr):
+                LOG.error(f"Lambda function {self.function_name} failed with error: {stderr}")
+                return Response(
+                    json.dumps({"message": "Internal server error", "type": "LambdaFunctionError"}),
+                    status=502,
+                    headers={"Content-Type": "application/json"},
+                )
+
+            # Parse Lambda response
+            try:
+                lambda_response = json.loads(stdout) if stdout else {}
+            except json.JSONDecodeError as e:
+                LOG.warning(f"Failed to parse Lambda response as JSON: {e}. Returning 502.")
+                return Response(
+                    json.dumps({"message": "The Lambda function returned an invalid response"}),
+                    status=502,
+                    headers={"Content-Type": "application/json"},
+                )
+
+            # Format response
+            status_code, headers, body = FunctionUrlPayloadFormatter._parse_lambda_response(lambda_response)
+
+            # Add CORS headers if configured
+            cors_headers = self._get_cors_headers()
+            headers.update(cors_headers)
+
+            return Response(body, status=status_code, headers=headers)
+
+        except Exception as e:
+            LOG.error(f"Error invoking function {self.function_name}: {e}", exc_info=True)
+            # Return 502 Bad Gateway for Lambda invocation errors
+            return Response(
+                json.dumps({"message": "Bad Gateway", "error": str(e)}),
+                status=502,
+                headers={"Content-Type": "application/json"},
+            )
 
     def _handle_cors_preflight(self):
         """Handle CORS preflight requests"""
@@ -364,7 +375,10 @@ class FunctionUrlHandler(BaseLocalService):
         # Simple check for Authorization header presence
         auth_header = request.headers.get("Authorization")
         if not auth_header:
-            LOG.debug("No Authorization header found")
+            LOG.warning(
+                "IAM authorization required but no Authorization header found. "
+                "Use --disable-authorizer flag to skip authorization checks entirely."
+            )
             return False
 
         # In local mode, accept any Authorization header that starts with "AWS4-HMAC-SHA256"
@@ -376,7 +390,11 @@ class FunctionUrlHandler(BaseLocalService):
             )
             return True
 
-        LOG.debug(f"Invalid Authorization header format: {auth_header[:20]}...")
+        LOG.warning(
+            f"Invalid Authorization header format: {auth_header[:20]}... "
+            "Expected AWS4-HMAC-SHA256 format for local testing. "
+            "Use --disable-authorizer flag to skip authorization checks entirely."
+        )
         return False
 
     def start(self):
@@ -390,7 +408,7 @@ class FunctionUrlHandler(BaseLocalService):
     def _run_flask(self):
         """Run the Flask application"""
         try:
-            self.app.run(
+            self._app.run(
                 host=self.host, port=self.port, threaded=True, use_reloader=False, use_debugger=False, debug=False
             )
         except OSError as e:

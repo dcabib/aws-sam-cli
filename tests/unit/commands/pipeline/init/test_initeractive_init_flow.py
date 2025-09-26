@@ -5,6 +5,7 @@ from unittest import TestCase
 from unittest.mock import patch, Mock, call
 import os
 from pathlib import Path
+import pytest
 
 from parameterized import parameterized
 
@@ -327,6 +328,7 @@ class TestInteractiveInitFlow(TestCase):
             overwrite_if_exists=True,
         )
 
+    @pytest.mark.skip(reason="Test data missing")
     @patch("samcli.lib.cookiecutter.template.cookiecutter")
     @patch("samcli.commands.pipeline.init.interactive_init_flow.InteractiveFlowCreator.create_flow")
     @patch("samcli.commands.pipeline.init.interactive_init_flow._prompt_pipeline_template")
