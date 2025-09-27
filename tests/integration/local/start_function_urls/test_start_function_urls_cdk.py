@@ -35,7 +35,7 @@ class TestStartFunctionUrlsCDK(WritableStartFunctionUrlIntegBaseClass):
             "CDKFunction": {
                 "Type": "AWS::Lambda::Function",
                 "Properties": {
-                    "Code": ".",
+                    "Code": "./",
                     "Handler": "main.handler",
                     "Runtime": "python3.9",
                     "Role": "arn:aws:iam::123456789012:role/lambda-execution-role"
@@ -89,11 +89,8 @@ def handler(event, context):
                 "CDKCorsFunction": {
                     "Type": "AWS::Lambda::Function",
                     "Properties": {
-                        "Code": {
-                            "S3Bucket": ".",
-                            "S3Key": "."
-                        },
-                        "Handler": "index.handler",
+                        "Code": "./",
+                        "Handler": "main.handler",
                         "Runtime": "python3.9",
                         "Role": "arn:aws:iam::123456789012:role/lambda-execution-role"
                     }

@@ -93,8 +93,21 @@ class LocalFunctionUrlService:
 
         service.create()
 
-        # Print out the list of function URLs that will be mounted
-        self._print_function_urls(self.function_url_provider.function_urls, self.host, self.port, self.port_range)
+        # Filter function URLs for printing if specific function requested
+        functions_to_print = self.function_url_provider.function_urls
+        if self.function_name:
+            functions_to_print = [fu for fu in self.function_url_provider.function_urls if fu.function_name == self.function_name]
+
+        # Print out the list of function URLs that will be mounted with correct port info
+        # For single function with specific port, show that port; otherwise use range logic
+        if self.function_name and self.port and len(functions_to_print) == 1:
+            # Single function mode with specific port
+            function_url = functions_to_print[0]
+            output = "Mounting {} at http://{}:{}/".format(function_url.function_name, self.host, self.port)
+            LOG.info(output)
+        else:
+            # Multiple functions or auto-port assignment
+            self._print_function_urls(functions_to_print, self.host, self.port, self.port_range)
         LOG.info(
             "You can now browse to the above endpoints to invoke your functions. "
             "You do not need to restart/reload SAM CLI while working on your functions, "

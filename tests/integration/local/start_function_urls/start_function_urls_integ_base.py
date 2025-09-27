@@ -17,7 +17,7 @@ import requests
 from docker.errors import APIError
 from psutil import NoSuchProcess
 
-from tests.integration.local.common_utils import InvalidAddressException, random_port
+from tests.integration.local.common_utils import InvalidAddressException, random_port, wait_for_local_process
 from tests.integration.local.shared_start_service_base import SharedStartServiceBase
 from tests.testing_utils import (
     get_sam_command,
@@ -146,74 +146,27 @@ class StartFunctionUrlIntegBaseClass(SharedStartServiceBase):
         env["SAM_CLI_BETA_FEATURES"] = "1"
 
         cls.start_function_urls_process = (
-            Popen(command_list, stderr=PIPE, stdout=PIPE, stdin=PIPE, env=env)
+            Popen(command_list, stderr=PIPE, stdout=PIPE)
             if not cls.project_directory
-            else Popen(command_list, stderr=PIPE, stdout=PIPE, stdin=PIPE, cwd=cls.project_directory, env=env)
+            else Popen(command_list, stderr=PIPE, stdout=PIPE, cwd=cls.project_directory)
         )
 
-        # Send 'y' to beta features prompt
-        try:
-            cls.start_function_urls_process.stdin.write(b"y\n")
-            cls.start_function_urls_process.stdin.flush()
-            cls.start_function_urls_process.stdin.close()
-        except Exception:
-            pass
+        # Use the same utility function as start-api and start-lambda
+        cls.start_function_urls_process_output = wait_for_local_process(
+            cls.start_function_urls_process,
+            cls.port,
+            collect_output=True,  # Always collect output to extract actual port
+        )
 
-        # Wait for service to start and find actual port
-        import time
-        import requests
+        # Extract actual port from output (Function URLs may use different port in range)
+        import re
 
-        start_time = time.time()
-        actual_port = None
-
-        while time.time() - start_time < 30:  # 30 second timeout
-            # Check if process is still running
-            if cls.start_function_urls_process.poll() is not None:
-                # Process has terminated, get error output without communicate()
-                error_msg = f"Process terminated with code {cls.start_function_urls_process.returncode}"
-                try:
-                    # Try to read any remaining output
-                    stderr_data = cls.start_function_urls_process.stderr.read()
-                    stdout_data = cls.start_function_urls_process.stdout.read()
-                    if stderr_data:
-                        error_msg += f"\nStderr: {stderr_data.decode()}"
-                    if stdout_data:
-                        error_msg += f"\nStdout: {stdout_data.decode()}"
-                except Exception:
-                    pass
-                raise Exception(error_msg)
-
-            # Try ports in the range
-            for test_port in range(int(cls.port), int(cls.port) + 10):
-                try:
-                    response = requests.get(f"http://127.0.0.1:{test_port}/", timeout=1)
-                    if response.status_code in [200, 403, 404]:
-                        actual_port = test_port
-                        break
-                except requests.exceptions.RequestException:
-                    pass
-
-            if actual_port:
-                cls.port = str(actual_port)
-                break
-
-            time.sleep(1)
-
-        if not actual_port:
-            # Get final process output for debugging
-            if cls.start_function_urls_process.poll() is None:
-                cls.start_function_urls_process.terminate()
-                stdout, stderr = cls.start_function_urls_process.communicate()
-                error_msg = "Function URLs service did not start within timeout"
-                if stderr:
-                    error_msg += f"\nStderr: {stderr.decode()}"
-                if stdout:
-                    error_msg += f"\nStdout: {stdout.decode()}"
-                raise Exception(error_msg)
-            else:
-                raise Exception(f"Function URLs service did not start within timeout")
-
-        cls.start_function_urls_process_output = f"Service started on port {actual_port}"
+        if cls.start_function_urls_process_output:
+            port_match = re.search(r"Running on http://127\.0\.0\.1:(\d+)", cls.start_function_urls_process_output)
+            if port_match:
+                actual_port = port_match.group(1)
+                cls.port = actual_port
+                LOG.info(f"Function URL service running on actual port: {actual_port}")
 
         cls.stop_reading_thread = False
 

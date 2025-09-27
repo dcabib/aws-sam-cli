@@ -49,28 +49,42 @@ class LocalFunctionUrlsService(BaseLocalService):
         stderr : StreamWriter, optional
             Stream for error output
         """
-        # Always try to find a free port in the range, even if port is specified
-        if port_range and "-" in port_range:
+        # Port assignment logic for single vs multi function mode
+        if port and function_name:
+            # Single function mode with specific port - use it directly (don't require it to be in range)
+            try:
+                import socket
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.bind((host, port))
+                sock.close()
+                # Specified port is available, use it
+            except OSError:
+                # Specified port not available, try to find alternative
+                if port_range and "-" in port_range:
+                    start_port = int(port_range.split("-")[0])
+                    end_port = int(port_range.split("-")[1])
+                    port = find_free_port(host, start_port, end_port)
+                else:
+                    port = find_free_port(host, 3001, 3010)
+                LOG.warning(f"Specified port not available, using {port} instead")
+        elif port_range and "-" in port_range:
+            # Multi-function mode with port range
             start_port = int(port_range.split("-")[0])
             end_port = int(port_range.split("-")[1])
-            # If a specific port is requested, try it first
             if port and start_port <= port <= end_port:
+                # Specific port within range, try it
                 try:
-                    # Test if the requested port is available
                     import socket
-
                     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     sock.bind((host, port))
                     sock.close()
-                    # Port is available, use it
                 except OSError:
-                    # Port is not available, find a free one in range
                     port = find_free_port(host, start_port, end_port)
             else:
-                # Find any free port in range
+                # Use range for auto-assignment
                 port = find_free_port(host, start_port, end_port)
         elif not port:
-            # Fallback to default range if no port_range specified
+            # No port specified, use default range
             port = find_free_port(host, 3001, 3010)
 
         super().__init__(is_debugging=lambda_runner.is_debugging(), port=port, host=host, ssl_context=None)
@@ -97,23 +111,55 @@ class LocalFunctionUrlsService(BaseLocalService):
             start_port = int(self.port_range)
             end_port = start_port + 10
 
-        current_port = start_port
-
         # Filter functions if specific function requested
         functions_to_start = self.function_urls
         if self.function_name:
             functions_to_start = [fu for fu in self.function_urls if fu.function_name == self.function_name]
 
+        # Validate we have enough ports for all functions
+        total_ports_needed = len(functions_to_start)
+        total_ports_available = end_port - start_port + 1
+        if total_ports_needed > total_ports_available:
+            raise RuntimeError(
+                f"Not enough ports in range {start_port}-{end_port}. "
+                f"Need {total_ports_needed} ports but only {total_ports_available} available. "
+                f"Use a wider --port-range or start fewer functions."
+            )
+
+        # Track used ports to avoid conflicts
+        used_ports = set()
+        
         # Create a handler for each function URL
-        for function_url in functions_to_start:
+        for i, function_url in enumerate(functions_to_start):
             # Find available port
             if self.port and (len(functions_to_start) == 1 or self.function_name):
                 # Use specified port for single function or when function name is specified
                 port = self.port
             else:
-                # Find next available port in range
-                port = find_free_port(self.host, current_port, end_port)
-                current_port = port + 1
+                # Sequential port allocation starting from start_port
+                port = None
+                for attempt_port in range(start_port, end_port + 1):
+                    if attempt_port not in used_ports:
+                        try:
+                            # Test if this specific port is available
+                            import socket
+                            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                            sock.bind((self.host, attempt_port))
+                            sock.close()
+                            port = attempt_port
+                            break
+                        except OSError:
+                            # Port not available, try next
+                            continue
+                
+                if port is None:
+                    raise RuntimeError(
+                        f"Unable to find free port for function {function_url.function_name} "
+                        f"in range {start_port}-{end_port}. Ports in use: {sorted(used_ports)}"
+                    )
+            
+            # Reserve the port
+            used_ports.add(port)
 
             # Create handler for this function
             handler = FunctionUrlHandler(
