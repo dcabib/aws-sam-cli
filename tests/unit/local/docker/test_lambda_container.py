@@ -755,3 +755,43 @@ class TestLambdaContainer_get_additional_volumes(TestCase):
         result = LambdaContainer._get_additional_volumes(runtime, debug_options)
         print(result)
         self.assertEqual(result, expected)
+
+    def test_additional_volumes_dotnet_validates_debugger_architecture(self):
+        """Test that .NET runtime validates debugger architecture."""
+        debug_options = DebugContext(debug_ports=[1234], debugger_path="/somepath")
+
+        with patch("samcli.lib.utils.debugger.validate_debugger_architecture") as mock_validate:
+            mock_validate.return_value = "/validated/path"
+            result = LambdaContainer._get_additional_volumes("dotnet6", debug_options, "x86_64")
+
+        expected = {
+            "/validated/path": {"bind": "/tmp/lambci_debug_files", "mode": "ro"},
+        }
+        self.assertEqual(result, expected)
+        mock_validate.assert_called_once_with("/somepath", "x86_64", auto_download=True)
+
+    def test_additional_volumes_dotnet_handles_validation_exception(self):
+        """Test that .NET runtime handles validation exceptions gracefully."""
+        debug_options = DebugContext(debug_ports=[1234], debugger_path="/somepath")
+
+        with patch("samcli.lib.utils.debugger.validate_debugger_architecture") as mock_validate:
+            mock_validate.side_effect = Exception("Validation failed")
+            result = LambdaContainer._get_additional_volumes("dotnet6", debug_options, "x86_64")
+
+        # Should fall back to original path on exception
+        expected = {
+            "/somepath": {"bind": "/tmp/lambci_debug_files", "mode": "ro"},
+        }
+        self.assertEqual(result, expected)
+
+    def test_additional_volumes_dotnet_uses_default_architecture(self):
+        """Test that .NET runtime uses x86_64 as default architecture."""
+        debug_options = DebugContext(debug_ports=[1234], debugger_path="/somepath")
+
+        with patch("samcli.lib.utils.debugger.validate_debugger_architecture") as mock_validate:
+            mock_validate.return_value = "/validated/path"
+            # Not passing architecture parameter
+            result = LambdaContainer._get_additional_volumes("dotnet8", debug_options)
+
+        # Should default to x86_64
+        mock_validate.assert_called_once_with("/somepath", "x86_64", auto_download=True)

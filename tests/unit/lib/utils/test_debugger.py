@@ -62,9 +62,7 @@ class TestDetectBinaryArchitecture:
         binary_path.write_bytes(b"fake binary")
 
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(
-                stdout="/path/to/binary: ELF 64-bit LSB executable, ARM aarch64"
-            )
+            mock_run.return_value = MagicMock(stdout="/path/to/binary: ELF 64-bit LSB executable, ARM aarch64")
             result = detect_binary_architecture(str(binary_path))
 
         assert result == ARM64
@@ -342,9 +340,7 @@ class TestValidateDebuggerArchitecture:
             mock_detect.return_value = ARM64  # Mismatch!
 
             with pytest.raises(DebuggerArchitectureMismatch) as exc_info:
-                validate_debugger_architecture(
-                    str(debugger_path), X86_64, auto_download=False
-                )
+                validate_debugger_architecture(str(debugger_path), X86_64, auto_download=False)
 
         assert exc_info.value.debugger_arch == ARM64
         assert exc_info.value.container_arch == X86_64
@@ -470,3 +466,109 @@ class TestDebuggerArchitectureMismatch:
         assert exc.debugger_arch == ARM64
         assert exc.container_arch == X86_64
         assert exc.debugger_path == "/path/to/debugger"
+
+
+class TestGetDebuggerCacheDir:
+    """Tests for _get_debugger_cache_dir function."""
+
+    def test_creates_debugger_cache_dir(self, tmp_path):
+        """Test that the function creates the debugger cache directory."""
+        with patch("samcli.lib.utils.debugger.GlobalConfig") as mock_global_config:
+            mock_config_instance = MagicMock()
+            mock_config_instance.config_dir = str(tmp_path)
+            mock_global_config.return_value = mock_config_instance
+
+            result = _get_debugger_cache_dir()
+
+            expected = tmp_path / "debuggers"
+            assert result == expected
+            assert expected.exists()
+
+
+class TestDetectBinaryArchitectureEdgeCases:
+    """Additional edge case tests for detect_binary_architecture."""
+
+    def test_handles_generic_exception(self, tmp_path):
+        """Test handles generic exceptions gracefully."""
+        binary_path = tmp_path / "binary"
+        binary_path.write_bytes(b"fake binary")
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.side_effect = RuntimeError("Unexpected error")
+            result = detect_binary_architecture(str(binary_path))
+
+        assert result is None
+
+
+class TestDownloadVsdbgEdgeCases:
+    """Additional edge case tests for download_vsdbg."""
+
+    def test_logs_warning_on_architecture_mismatch_after_download(self, tmp_path):
+        """Test logs warning when downloaded architecture doesn't match requested."""
+        vsdbg_path = tmp_path / "vsdbg" / X86_64
+        vsdbg_path.mkdir(parents=True)
+        vsdbg_binary = vsdbg_path / "vsdbg"
+        vsdbg_binary.write_bytes(b"fake binary")
+
+        with patch("samcli.lib.utils.debugger.get_vsdbg_cache_path") as mock_path:
+            mock_path.return_value = vsdbg_path
+            with patch("samcli.lib.utils.debugger.is_vsdbg_cached") as mock_cached:
+                mock_cached.return_value = False
+                with patch("subprocess.run") as mock_run:
+                    mock_run.return_value = MagicMock(returncode=0, stderr="")
+                    with patch("samcli.lib.utils.debugger.detect_binary_architecture") as mock_detect:
+                        # Simulate downloaded binary being wrong architecture
+                        mock_detect.return_value = ARM64
+                        result = download_vsdbg(X86_64)
+
+        # Should still return the path despite mismatch warning
+        assert result == str(vsdbg_path)
+
+    def test_success_log_on_download(self, tmp_path):
+        """Test success log is produced after successful download."""
+        vsdbg_path = tmp_path / "vsdbg" / X86_64
+        vsdbg_path.mkdir(parents=True)
+        vsdbg_binary = vsdbg_path / "vsdbg"
+        vsdbg_binary.write_bytes(b"fake binary")
+
+        with patch("samcli.lib.utils.debugger.get_vsdbg_cache_path") as mock_path:
+            mock_path.return_value = vsdbg_path
+            with patch("samcli.lib.utils.debugger.is_vsdbg_cached") as mock_cached:
+                mock_cached.return_value = False
+                with patch("subprocess.run") as mock_run:
+                    mock_run.return_value = MagicMock(returncode=0, stderr="")
+                    with patch("samcli.lib.utils.debugger.detect_binary_architecture") as mock_detect:
+                        mock_detect.return_value = X86_64  # Correct architecture
+                        result = download_vsdbg(X86_64)
+
+        assert result == str(vsdbg_path)
+
+
+class TestValidateDebuggerArchitectureEdgeCases:
+    """Additional edge case tests for validate_debugger_architecture."""
+
+    def test_returns_path_when_architecture_matches(self, tmp_path):
+        """Test returns original path when debugger architecture matches container."""
+        debugger_path = tmp_path / "debugger"
+        debugger_path.mkdir()
+        vsdbg_binary = debugger_path / "vsdbg"
+        vsdbg_binary.write_bytes(b"fake binary")
+
+        with patch("samcli.lib.utils.debugger.detect_binary_architecture") as mock_detect:
+            mock_detect.return_value = ARM64
+            result = validate_debugger_architecture(str(debugger_path), ARM64)
+
+        assert result == str(debugger_path)
+
+    def test_returns_path_when_detection_returns_none(self, tmp_path):
+        """Test returns original path when architecture detection fails."""
+        debugger_path = tmp_path / "debugger"
+        debugger_path.mkdir()
+        vsdbg_binary = debugger_path / "vsdbg"
+        vsdbg_binary.write_bytes(b"fake binary")
+
+        with patch("samcli.lib.utils.debugger.detect_binary_architecture") as mock_detect:
+            mock_detect.return_value = None
+            result = validate_debugger_architecture(str(debugger_path), X86_64)
+
+        assert result == str(debugger_path)

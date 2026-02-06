@@ -261,8 +261,7 @@ class LambdaContainer(Container):
                     )
                 except Exception as e:
                     LOG.warning(
-                        "Failed to validate debugger architecture: %s. "
-                        "Proceeding with original path %s",
+                        "Failed to validate debugger architecture: %s. " "Proceeding with original path %s",
                         str(e),
                         debug_options.debugger_path,
                     )

@@ -10,7 +10,6 @@ This module provides functionality to:
 import logging
 import os
 import subprocess
-import tempfile
 from pathlib import Path
 from typing import Optional
 
@@ -95,6 +94,7 @@ def detect_binary_architecture(binary_path: str) -> Optional[str]:
             capture_output=True,
             text=True,
             timeout=10,
+            check=False,
         )
         output = result.stdout.lower()
 
@@ -261,6 +261,7 @@ def download_vsdbg(architecture: str, force: bool = False) -> str:
             capture_output=True,
             text=True,
             timeout=300,  # 5 minutes timeout
+            check=False,
         )
 
         if result.returncode != 0:
@@ -447,7 +448,6 @@ def clear_debugger_cache(debugger_type: Optional[str] = None, architecture: Opti
             if arch_dir.exists():
                 shutil.rmtree(arch_dir)
                 LOG.info("Cleared %s debugger cache for %s at %s", debugger_type, architecture, arch_dir)
-        else:
-            if debugger_dir.exists():
-                shutil.rmtree(debugger_dir)
-                LOG.info("Cleared all %s debugger cache at %s", debugger_type, debugger_dir)
+        elif debugger_dir.exists():
+            shutil.rmtree(debugger_dir)
+            LOG.info("Cleared all %s debugger cache at %s", debugger_type, debugger_dir)
