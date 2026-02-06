@@ -4,8 +4,9 @@ Represents Lambda runtime containers.
 
 import logging
 import os
-from typing import List
+from typing import List, Optional
 
+from samcli.lib.utils.architecture import X86_64
 from samcli.lib.utils.packagetype import IMAGE
 from samcli.local.docker.exceptions import InvalidRuntimeException
 from samcli.local.docker.lambda_debug_settings import LambdaDebugSettings
@@ -110,7 +111,7 @@ class LambdaContainer(Container):
         config = LambdaContainer._get_config(lambda_image, image)
         entry, container_env_vars = LambdaContainer._get_debug_settings(runtime, debug_options)
         additional_options = LambdaContainer._get_additional_options(runtime, debug_options)
-        additional_volumes = LambdaContainer._get_additional_volumes(runtime, debug_options)
+        additional_volumes = LambdaContainer._get_additional_volumes(runtime, debug_options, architecture)
 
         _work_dir = self._WORKING_DIR
         _entrypoint = None
@@ -220,18 +221,53 @@ class LambdaContainer(Container):
         return opts
 
     @staticmethod
-    def _get_additional_volumes(runtime, debug_options):
+    def _get_additional_volumes(runtime, debug_options, architecture: Optional[str] = None):
         """
         Return additional volumes to be mounted in the Docker container. Used by container debug for mapping
         debugger executable into the container.
+
+        For .NET runtimes, this method also validates that the debugger binary architecture matches the
+        container architecture. If there's a mismatch (e.g., ARM64 debugger on x86_64 container), it will
+        attempt to auto-download the correct debugger version.
+
         :param runtime: the runtime string
         :param DebugContext debug_options: DebugContext for the runtime of the container.
+        :param architecture: Optional. The target architecture (x86_64 or arm64). Defaults to x86_64.
         :return dict: Dictionary containing volume map passed to container creation.
         """
         volumes = {}
 
         if debug_options and debug_options.debugger_path:
-            volumes[debug_options.debugger_path] = LambdaContainer._DEBUGGER_VOLUME_MOUNT
+            debugger_path = debug_options.debugger_path
+
+            # For .NET runtimes, validate debugger architecture matches container architecture
+            # This is important because vsdbg downloaded on ARM Mac is ARM64 binary,
+            # but Lambda container typically runs x86_64
+            if runtime and runtime.startswith("dotnet"):
+                container_arch = architecture or X86_64
+                try:
+                    # Lazy import to avoid circular dependencies
+                    from samcli.lib.utils.debugger import validate_debugger_architecture
+
+                    debugger_path = validate_debugger_architecture(
+                        debugger_path,
+                        container_arch,
+                        auto_download=True,
+                    )
+                    LOG.debug(
+                        "Using debugger path %s for container architecture %s",
+                        debugger_path,
+                        container_arch,
+                    )
+                except Exception as e:
+                    LOG.warning(
+                        "Failed to validate debugger architecture: %s. "
+                        "Proceeding with original path %s",
+                        str(e),
+                        debug_options.debugger_path,
+                    )
+
+            volumes[debugger_path] = LambdaContainer._DEBUGGER_VOLUME_MOUNT
 
         return volumes
 
