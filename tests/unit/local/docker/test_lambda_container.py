@@ -130,7 +130,7 @@ class TestLambdaContainer_init(TestCase):
         get_exposed_ports_mock.assert_called_with(self.debug_options)
         get_debug_settings_mock.assert_called_with(self.runtime, self.debug_options)
         get_additional_options_mock.assert_called_with(self.runtime, self.debug_options)
-        get_additional_volumes_mock.assert_called_with(self.runtime, self.debug_options)
+        get_additional_volumes_mock.assert_called_with(self.runtime, self.debug_options, "arm64")
 
     @patch("samcli.local.docker.utils.get_validated_container_client")
     @patch.object(LambdaContainer, "_get_config")
@@ -209,7 +209,7 @@ class TestLambdaContainer_init(TestCase):
         )
         get_exposed_ports_mock.assert_called_with(self.debug_options)
         get_additional_options_mock.assert_called_with(self.runtime, self.debug_options)
-        get_additional_volumes_mock.assert_called_with(self.runtime, self.debug_options)
+        get_additional_volumes_mock.assert_called_with(self.runtime, self.debug_options, "arm64")
 
     @patch("samcli.local.docker.utils.get_validated_container_client")
     @patch.object(LambdaContainer, "_get_config")
@@ -291,7 +291,7 @@ class TestLambdaContainer_init(TestCase):
         )
         get_exposed_ports_mock.assert_called_with(self.debug_options)
         get_additional_options_mock.assert_called_with(self.runtime, self.debug_options)
-        get_additional_volumes_mock.assert_called_with(self.runtime, self.debug_options)
+        get_additional_volumes_mock.assert_called_with(self.runtime, self.debug_options, "x86_64")
 
     @patch("samcli.local.docker.utils.get_validated_container_client")
     @patch.object(LambdaContainer, "_get_config")
@@ -374,7 +374,7 @@ class TestLambdaContainer_init(TestCase):
         )
         get_exposed_ports_mock.assert_called_with(self.debug_options)
         get_additional_options_mock.assert_called_with(self.runtime, self.debug_options)
-        get_additional_volumes_mock.assert_called_with(self.runtime, self.debug_options)
+        get_additional_volumes_mock.assert_called_with(self.runtime, self.debug_options, "x86_64")
 
     @patch("samcli.local.docker.utils.get_validated_container_client")
     @patch.object(LambdaContainer, "_get_config")
@@ -462,7 +462,7 @@ class TestLambdaContainer_init(TestCase):
         )
         get_exposed_ports_mock.assert_called_with(self.debug_options)
         get_additional_options_mock.assert_called_with(self.runtime, self.debug_options)
-        get_additional_volumes_mock.assert_called_with(self.runtime, self.debug_options)
+        get_additional_volumes_mock.assert_called_with(self.runtime, self.debug_options, "x86_64")
 
     @patch("samcli.local.docker.utils.get_validated_container_client")
     def test_must_fail_for_unsupported_runtime(self, mock_get_validated_client):
