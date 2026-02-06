@@ -237,9 +237,12 @@ class ApplicationBuilder:
                         self._is_building_specific_resource,
                         bool(self._container_manager),
                     ),
+                    build_in_source=self._build_in_source,
                 )
             else:
-                build_strategy = ParallelBuildStrategy(build_graph, build_strategy)
+                build_strategy = ParallelBuildStrategy(
+                    build_graph, build_strategy, build_in_source=self._build_in_source
+                )
         elif self._cached:
             build_strategy = CachedOrIncrementalBuildStrategyWrapper(
                 build_graph,

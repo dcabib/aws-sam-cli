@@ -7,6 +7,7 @@ import logging
 import os.path
 import pathlib
 import shutil
+import threading
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TypeVar, cast
@@ -400,15 +401,39 @@ class ParallelBuildStrategy(BuildStrategy):
     Parallel implementation of Build Strategy
     This strategy runs each build in parallel.
     For actual build implementation it calls delegate implementation (could be one of the other Build Strategy)
+
+    When build_in_source is True, functions/layers sharing the same codeuri are built sequentially
+    to avoid race conditions (e.g., multiple npm processes writing to the same node_modules directory).
+    Functions/layers with different codeuris still build in parallel.
     """
 
     def __init__(
         self,
         build_graph: BuildGraph,
         delegate_build_strategy: BuildStrategy,
+        build_in_source: Optional[bool] = None,
     ) -> None:
         super().__init__(build_graph)
         self._delegate_build_strategy = delegate_build_strategy
+        self._build_in_source = build_in_source
+
+        # Dictionary to hold locks per codeuri for serializing builds when build_in_source is True
+        self._codeuri_locks: Dict[str, threading.Lock] = {}
+        # Lock to protect access to _codeuri_locks dictionary itself
+        self._codeuri_locks_lock = threading.Lock()
+
+    def _get_lock_for_codeuri(self, codeuri: Optional[str]) -> threading.Lock:
+        """
+        Get or create a lock for the given codeuri.
+        This ensures thread-safe access when multiple threads try to get locks for the same codeuri.
+        """
+        if codeuri is None:
+            codeuri = ""
+
+        with self._codeuri_locks_lock:
+            if codeuri not in self._codeuri_locks:
+                self._codeuri_locks[codeuri] = threading.Lock()
+            return self._codeuri_locks[codeuri]
 
     def build(self) -> Dict[str, str]:
         with self._delegate_build_strategy:
@@ -442,9 +467,19 @@ class ParallelBuildStrategy(BuildStrategy):
         return build_result
 
     def build_single_layer_definition(self, layer_definition: LayerBuildDefinition) -> Dict[str, str]:
+        if self._build_in_source:
+            # Serialize builds for the same codeuri to avoid race conditions
+            lock = self._get_lock_for_codeuri(layer_definition.codeuri)
+            with lock:
+                return self._delegate_build_strategy.build_single_layer_definition(layer_definition)
         return self._delegate_build_strategy.build_single_layer_definition(layer_definition)
 
     def build_single_function_definition(self, build_definition: FunctionBuildDefinition) -> Dict[str, str]:
+        if self._build_in_source:
+            # Serialize builds for the same codeuri to avoid race conditions
+            lock = self._get_lock_for_codeuri(build_definition.codeuri)
+            with lock:
+                return self._delegate_build_strategy.build_single_function_definition(build_definition)
         return self._delegate_build_strategy.build_single_function_definition(build_definition)
 
 
