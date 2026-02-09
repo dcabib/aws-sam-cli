@@ -33,6 +33,7 @@ _SAM_CLI_COMMAND_PACKAGES = [
     "samcli.commands.list.list",
     "samcli.commands.docs",
     "samcli.commands.remote.remote",
+    "samcli.commands.completion",
     # We intentionally do not expose the `bootstrap` command for now. We might open it up later
     # "samcli.commands.bootstrap",
 ]
@@ -230,6 +231,11 @@ class BaseCommand(Group):
                         RowDefinition(
                             name="publish",
                             text=SAM_CLI_COMMANDS.get("publish", ""),
+                        ),
+                        RowDefinition(
+                            name="completion",
+                            text=SAM_CLI_COMMANDS.get("completion", ""),
+                            extra_row_modifiers=[HighlightNewRowNameModifier()],
                         ),
                     ],
                 )

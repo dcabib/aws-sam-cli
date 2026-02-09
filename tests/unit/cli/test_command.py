@@ -184,6 +184,7 @@ class TestBaseCommand(TestCase):
                 ("delete", "delete command output"),
                 ("pipeline", "pipeline command output"),
                 ("publish", "publish command output"),
+                ("completion", "completion command output"),
             ],
         }
         with patch.dict(
@@ -204,6 +205,7 @@ class TestBaseCommand(TestCase):
                 "pipeline": "pipeline command output",
                 "publish": "publish command output",
                 "docs": "docs command output",
+                "completion": "completion command output",
             },
         ):
             cmd.format_commands(ctx, formatter)

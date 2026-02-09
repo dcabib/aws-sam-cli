@@ -2472,6 +2472,21 @@
           "required": [
             "parameters"
           ]
+        },
+        "completion": {
+          "title": "Completion command",
+          "description": "Generate shell completion scripts for SAM CLI.\n\n    Supported shells: bash, zsh, fish\n\n    \n    Examples:\n\n      # Bash - add to ~/.bashrc or ~/.bash_profile\n      eval \"$(sam completion bash)\"\n\n      # Or save to completion directory (recommended for faster shell startup)\n      sam completion bash > ~/.local/share/bash-completion/completions/sam\n\n      # Zsh - add to ~/.zshrc\n      eval \"$(sam completion zsh)\"\n\n      # Or save to fpath (recommended)\n      sam completion zsh > \"${fpath[1]}/_sam\"\n\n      # Fish\n      sam completion fish > ~/.config/fish/completions/sam.fish\n\n      # Auto-detect shell (uses $SHELL environment variable)\n      source <(sam completion)",
+          "properties": {
+            "parameters": {
+              "title": "Parameters for the completion command",
+              "description": "Available parameters for the completion command:\n* ",
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "required": [
+            "parameters"
+          ]
         }
       }
     }
